@@ -64,7 +64,9 @@ public class PackageListeningClassLoader implements SolrClassLoader, PackageList
         () -> {
           packageVersions = new ConcurrentHashMap<>();
           classNameVsPackageName = new ConcurrentHashMap<>();
-          onReload.run();
+          if (onReload != null) {
+            onReload.run();
+          }
         };
   }
 
@@ -183,7 +185,6 @@ public class PackageListeningClassLoader implements SolrClassLoader, PackageList
   }
 
   protected void doReloadAction(Ctx ctx) {
-    if (onReload == null) return;
     ctx.runLater(null, onReload);
   }
 }
