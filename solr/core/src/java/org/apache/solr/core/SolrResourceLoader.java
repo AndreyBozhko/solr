@@ -710,8 +710,8 @@ public class SolrResourceLoader
   }
 
   protected final void setSolrCore(SolrCore core) {
-    setSolrConfig(core.getSolrConfig());
     setCoreContainer(core.getCoreContainer());
+    setSolrConfig(core.getSolrConfig());
 
     this.coreName = core.getName();
     this.coreId = core.uniqueId;
