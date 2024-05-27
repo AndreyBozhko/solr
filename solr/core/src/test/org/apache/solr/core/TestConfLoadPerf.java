@@ -61,6 +61,11 @@ public class TestConfLoadPerf extends SolrTestCaseJ4 {
             container.solrHome,
             container.getResourceLoader().classLoader) {
 
+          // instance initializer block
+          {
+            setCoreContainer(container);
+          }
+
           @Override
           public InputStream openResource(String resource) throws IOException {
             if (resource.equals("solrconfig.xml")) {
@@ -73,8 +78,6 @@ public class TestConfLoadPerf extends SolrTestCaseJ4 {
             }
           }
         };
-    srl.setCoreContainer(container);
-
     System.gc();
     long heapSize = Runtime.getRuntime().totalMemory();
     List<SolrConfig> allConfigs = new ArrayList<>();
