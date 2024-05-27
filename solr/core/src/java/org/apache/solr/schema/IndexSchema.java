@@ -203,7 +203,8 @@ public class IndexSchema {
       Version luceneVersion, SolrResourceLoader loader, Properties substitutableProperties) {
     this.luceneVersion = Objects.requireNonNull(luceneVersion);
     this.loader = loader;
-    this.solrClassLoader = loader.getSchemaLoader() == null ? loader : loader.getSchemaLoader();
+    this.solrClassLoader =
+        loader.getPackageListeningLoader() == null ? loader : loader.getPackageListeningLoader();
     this.substitutableProperties = substitutableProperties;
   }
 

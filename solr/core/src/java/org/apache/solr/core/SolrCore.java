@@ -295,9 +295,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
     return packageListeners;
   }
 
-  static int boolean_query_max_clause_count = Integer.MIN_VALUE;
-
-  private ExecutorService coreAsyncTaskExecutor =
+  private final ExecutorService coreAsyncTaskExecutor =
       ExecutorUtil.newMDCAwareCachedThreadPool("Core Async Task");
 
   public final SolrCore.Provider coreProvider;
@@ -1077,7 +1075,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
       this.configSet = configSet;
       this.coreDescriptor = Objects.requireNonNull(coreDescriptor, "coreDescriptor cannot be null");
       this.name = Objects.requireNonNull(coreDescriptor.getName());
-      coreProvider = new Provider(coreContainer, getName(), uniqueId);
+      this.coreProvider = new Provider(coreContainer, getName(), uniqueId);
 
       this.solrConfig = configSet.getSolrConfig();
       this.resourceLoader = configSet.getSolrConfig().getResourceLoader();
@@ -3605,9 +3603,9 @@ public class SolrCore implements SolrInfoBean, Closeable {
    * live {@link SolrCore} instance even after it's unloaded
    */
   public static class Provider {
-    private final CoreContainer coreContainer;
-    private final String coreName;
-    private final UUID coreId;
+    final CoreContainer coreContainer;
+    final String coreName;
+    final UUID coreId;
 
     public Provider(CoreContainer coreContainer, String coreName, UUID coreId) {
       this.coreContainer = coreContainer;
@@ -3621,8 +3619,9 @@ public class SolrCore implements SolrInfoBean, Closeable {
 
     public void withCore(Consumer<SolrCore> r) {
       try (SolrCore core = coreContainer.getCore(coreName, coreId)) {
-        if (core == null) return;
-        r.accept(core);
+        if (core != null) {
+          r.accept(core);
+        }
       }
     }
   }

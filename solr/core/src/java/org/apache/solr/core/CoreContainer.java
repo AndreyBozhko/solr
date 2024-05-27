@@ -172,6 +172,7 @@ public class CoreContainer {
     // Declared up top to ensure this is present before anything else.
     // note: will not be re-added if already there
     ExecutorUtil.addThreadLocalProvider(SolrRequestInfo.getInheritableThreadLocalProvider());
+    log.trace("Added {}", this);
   }
 
   final SolrCores solrCores;
@@ -191,7 +192,7 @@ public class CoreContainer {
     }
   }
 
-  private volatile PluginBag<SolrRequestHandler> containerHandlers =
+  private final PluginBag<SolrRequestHandler> containerHandlers =
       new PluginBag<>(SolrRequestHandler.class, null);
 
   private volatile ApplicationHandler jerseyAppHandler;
@@ -309,7 +310,7 @@ public class CoreContainer {
   public static final long INITIAL_CORE_LOAD_COMPLETE = 0x4L;
   private volatile long status = 0L;
 
-  private ExecutorService coreContainerAsyncTaskExecutor =
+  private final ExecutorService coreContainerAsyncTaskExecutor =
       ExecutorUtil.newMDCAwareCachedThreadPool("Core Container Async Task");
 
   /**

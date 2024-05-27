@@ -201,13 +201,11 @@ public class SolrConfig implements MapSerializable {
    *     true otherwise
    * @param substitutableProperties optional properties to substitute into the XML
    */
-  @SuppressWarnings("unchecked")
   private SolrConfig(
       SolrResourceLoader loader,
       String name,
       boolean isConfigsetTrusted,
-      Properties substitutableProperties)
-      throws IOException {
+      Properties substitutableProperties) {
     this.resourceLoader = loader;
     this.resourceName = name;
     this.substituteProperties = substitutableProperties;

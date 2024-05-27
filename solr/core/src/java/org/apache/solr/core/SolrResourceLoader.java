@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -120,11 +119,10 @@ public class SolrResourceLoader
   private String name = "";
   protected URLClassLoader classLoader;
   private final Path instanceDir;
-  private String coreName;
-  private UUID coreId;
+  private SolrCore.Provider coreProvider;
   private SolrConfig config;
   private CoreContainer coreContainer;
-  private PackageListeningClassLoader schemaLoader;
+  private PackageListeningClassLoader packageListeningLoader;
 
   private PackageListeningClassLoader coreReloadingClassLoader;
   private final List<SolrCoreAware> waitingForCore =
@@ -153,11 +151,11 @@ public class SolrResourceLoader
     return managedResourceRegistry;
   }
 
-  public SolrClassLoader getSchemaLoader() {
-    if (schemaLoader == null) {
-      schemaLoader = createSchemaLoader();
+  public SolrClassLoader getPackageListeningLoader() {
+    if (packageListeningLoader == null) {
+      packageListeningLoader = createPackageListeningLoader();
     }
-    return schemaLoader;
+    return packageListeningLoader;
   }
 
   /** Creates a loader. Note: we do NOT call {@link #reloadLuceneSPI()}. */
@@ -585,8 +583,8 @@ public class SolrResourceLoader
       Class<?> type = assertAwareCompatibility(ResourceLoaderAware.class, aware);
       if (schemaResourceLoaderComponents.contains(type)) {
         // this is a schema component
-        // lets use schema classloader
-        return getSchemaLoader().findClass(cname, expectedType);
+        // let's use package-aware schema classloader
+        return getPackageListeningLoader().findClass(cname, expectedType);
       }
     }
     return null;
@@ -694,24 +692,37 @@ public class SolrResourceLoader
     }
   }
 
-  void initConfig(SolrConfig config) {
-    assert this.config == null || this.config == config;
+  protected final void initConfig(SolrConfig config) {
+    if (this.config != null && this.config != config) {
+      throw new IllegalStateException(
+          "loader is already associated with an instance of SolrConfig");
+    }
     this.config = config;
   }
 
-  void initCore(SolrCore core) {
-    initConfig(core.getSolrConfig());
-    this.coreName = core.getName();
-    this.coreId = core.uniqueId;
-    this.coreContainer = core.getCoreContainer();
-    SolrCore.Provider coreProvider = core.coreProvider;
+  protected final void initCoreContainer(CoreContainer coreContainer) {
+    if (this.coreContainer != null && this.coreContainer != coreContainer) {
+      throw new IllegalStateException(
+          "loader is already associated with an instance of CoreContainer");
+    }
+    this.coreContainer = coreContainer;
+  }
 
+  protected final void initCore(SolrCore core) {
+    initConfig(core.getSolrConfig());
+    initCoreContainer(core.getCoreContainer());
+
+    // always update the core provider
+    this.coreProvider = core.coreProvider;
     this.coreReloadingClassLoader =
         new PackageListeningClassLoader(
-            core.getCoreContainer(), this, s -> config.maxPackageVersion(s), null) {
+            coreContainer, this, pkg -> config.maxPackageVersion(pkg), null) {
           @Override
           protected void doReloadAction(Ctx ctx) {
-            log.info("Core reloading classloader issued reload for: {}/{} ", coreName, coreId);
+            log.info(
+                "Core reloading classloader issued reload for: {}/{} ",
+                coreProvider.coreName,
+                coreProvider.coreId);
             coreProvider.reload();
           }
         };
@@ -721,7 +732,9 @@ public class SolrResourceLoader
   /** Tell all {@link SolrCoreAware} instances about the SolrCore */
   @Override
   public void inform(SolrCore core) {
-    if (getSchemaLoader() != null) core.getPackageListeners().addListener(schemaLoader);
+    if (getPackageListeningLoader() != null) {
+      core.getPackageListeners().addListener(packageListeningLoader);
+    }
 
     // make a copy to avoid potential deadlock of a callback calling newInstance and trying to
     // add something to waitingForCore.
@@ -945,26 +958,21 @@ public class SolrResourceLoader
         registerCoreReloadListener);
   }
 
-  private PackageListeningClassLoader createSchemaLoader() {
-    CoreContainer cc = getCoreContainer();
-    if (cc == null) {
-      // corecontainer not available . can't load from packages
+  private PackageListeningClassLoader createPackageListeningLoader() {
+    if (coreContainer == null || coreContainer.getPackageLoader() == null) {
+      // core container not available - can't load from packages
       return null;
     }
+    if (config == null) {
+      throw new IllegalStateException("loader is not associated with any SolrConfig instance");
+    }
     return new PackageListeningClassLoader(
-        cc,
+        coreContainer,
         this,
-        pkg -> {
-          if (getSolrConfig() == null) return null;
-          return getSolrConfig().maxPackageVersion(pkg);
-        },
+        pkg -> config.maxPackageVersion(pkg),
         () -> {
-          if (getCoreContainer() == null || config == null || coreName == null || coreId == null)
-            return;
-          try (SolrCore c = getCoreContainer().getCore(coreName, coreId)) {
-            if (c != null) {
-              c.fetchLatestSchema();
-            }
+          if (coreProvider != null) {
+            coreProvider.withCore(SolrCore::fetchLatestSchema);
           }
         });
   }

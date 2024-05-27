@@ -90,13 +90,18 @@ public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
     // this jar does NOT include `my.pkg.MyTextField` which
     // shouldn't matter because the configset does not
     // reference this version of the package
-    uploadPluginJar("2", getFile("runtimecode/runtimelibs.jar.bin").toPath());
-    registerPackage("2");
+    uploadPluginJar("3", getFile("runtimecode/runtimelibs.jar.bin").toPath());
+    registerPackage("3");
 
     // create a collection that uses configset `conf`
     // which references package mypkg (version 1)
     createCollection();
 
+    uploadPluginJar("2", getFile("runtimecode/schema-plugins.jar.bin").toPath());
+    registerPackage("2");
+//    reloadCollection();
+
+    Thread.sleep(10000);
     // without the fix, the test fails and the logs indicate that
     // mypkg version 2 is used, and not version 1 which was requested
     //
@@ -149,6 +154,11 @@ public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
 
   private void createCollection() throws Exception {
     var createRequest = CollectionAdminRequest.createCollection("coll", "conf", 1, 1);
+    processRequest(client, createRequest);
+  }
+
+  private void reloadCollection() throws Exception {
+    var createRequest = CollectionAdminRequest.reloadCollection("coll");
     processRequest(client, createRequest);
   }
 
