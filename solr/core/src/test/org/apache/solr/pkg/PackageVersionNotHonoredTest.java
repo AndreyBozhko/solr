@@ -28,6 +28,7 @@ import java.security.Signature;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
@@ -38,9 +39,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+// PackageSchemaPluginsTest
 public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
-
-  private static SolrClient client;
 
   private static final KeyPair KEY_PAIR;
 
@@ -51,6 +51,11 @@ public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
       throw new AssertionError("should not happen", e);
     }
   }
+
+  private final Path pluginJarPath = getFile("runtimecode/schema-plugins.jar.bin").toPath();
+  private final Path bogusJarPath = getFile("runtimecode/runtimelibs.jar.bin").toPath();
+
+  private SolrClient client;
 
   @Before
   @Override
@@ -70,39 +75,41 @@ public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
   @After
   @Override
   public void tearDown() throws Exception {
+    client = null;
     if (cluster != null) {
       cluster.shutdown();
+      cluster = null;
     }
     System.clearProperty("enable.packages");
     super.tearDown();
   }
 
   @Test
-  public void testPackageVersions() throws Exception {
-    // register schema-plugins.jar.bin as package mypkg (version 1)
+  public void testCreateCollection_withPkgVersionsConstraint() throws Exception {
+    // register schema-plugins.jar.bin as package mypkg (version 1);
     // this is the jar that has necessary class `my.pkg.MyTextField`,
     // and we expect our configset to load this jar because of the
     // constraint in params.json of the configset
-    uploadPluginJar("1", getFile("runtimecode/schema-plugins.jar.bin").toPath());
-    registerPackage("1");
+    uploadPluginJar("v1", pluginJarPath);
+    registerPackage("v1");
 
-    // register some other jar as package mypkg (version 2)
-    // this jar does NOT include `my.pkg.MyTextField` which
-    // shouldn't matter because the configset does not
-    // reference this version of the package
-    uploadPluginJar("2", getFile("runtimecode/runtimelibs.jar.bin").toPath());
-    registerPackage("2");
+    // register some other jar as package mypkg (versions 0 and 2);
+    // this jar does NOT include `my.pkg.MyTextField` -
+    // but that shouldn't matter because the configset
+    // does not reference these versions of the package
+    uploadPluginJar("v0", bogusJarPath);
+    registerPackage("v0");
+    uploadPluginJar("v2", bogusJarPath);
+    registerPackage("v2");
 
     // create a collection that uses configset `conf`
-    // which references package mypkg (version 1)
+    // which in turn references package mypkg (version 1)
     createCollection();
+    cluster.waitForActiveCollection("coll", 5, TimeUnit.SECONDS);
 
-    // without the fix, the test fails and the logs indicate that
-    // mypkg version 2 is used, and not version 1 which was requested
-    //
-    // > Caused by: org.apache.solr.common.SolrException: PACKAGE_LOADER:
-    // mypkg:{"package":"mypkg","version":"2","files":["/my-plugin-2/plugin.jar"]} Error loading
-    // class 'my.pkg.MyTextField'
+    // ...and then reload it to make sure everything is still OK
+    reloadCollection();
+    cluster.waitForActiveCollection("coll", 5, TimeUnit.SECONDS);
   }
 
   // utility methods
@@ -119,7 +126,7 @@ public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
 
   private void uploadPluginJar(String version, Path jarPath) throws Exception {
     var pluginRequest =
-        new V2Request.Builder("/cluster/files/my-plugin-" + version + "/plugin.jar")
+        new V2Request.Builder("/cluster/files/my-plugin/plugin-" + version + ".jar")
             .PUT()
             .withParams(params("sig", signature(Files.readAllBytes(jarPath))))
             .withPayload(Files.newInputStream(jarPath))
@@ -142,13 +149,18 @@ public class PackageVersionNotHonoredTest extends SolrCloudTestCase {
                         "version",
                         version,
                         "files",
-                        List.of("/my-plugin-" + version + "/plugin.jar"))))
+                        List.of("/my-plugin/plugin-" + version + ".jar"))))
             .build();
     processRequest(client, packageRequest);
   }
 
   private void createCollection() throws Exception {
     var createRequest = CollectionAdminRequest.createCollection("coll", "conf", 1, 1);
+    processRequest(client, createRequest);
+  }
+
+  private void reloadCollection() throws Exception {
+    var createRequest = CollectionAdminRequest.reloadCollection("coll");
     processRequest(client, createRequest);
   }
 
