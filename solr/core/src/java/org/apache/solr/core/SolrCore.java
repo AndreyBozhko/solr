@@ -268,7 +268,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   public volatile boolean indexEnabled = true;
   public volatile boolean readOnly = false;
 
-  private PackageListeners packageListeners = new PackageListeners(this);
+  private final PackageListeners packageListeners = new PackageListeners(this);
 
   public Date getStartTimeStamp() {
     return startTime;
@@ -295,9 +295,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
     return packageListeners;
   }
 
-  static int boolean_query_max_clause_count = Integer.MIN_VALUE;
-
-  private ExecutorService coreAsyncTaskExecutor =
+  private final ExecutorService coreAsyncTaskExecutor =
       ExecutorUtil.newMDCAwareCachedThreadPool("Core Async Task");
 
   public final SolrCore.Provider coreProvider;
@@ -842,7 +840,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   }
 
   // protect via synchronized(SolrCore.class)
-  private static Set<String> dirs = new HashSet<>();
+  private static final Set<String> dirs = new HashSet<>();
 
   /**
    * Returns <code>true</code> iff the index in the named directory is currently locked.
@@ -2063,8 +2061,8 @@ public class SolrCore implements SolrInfoBean, Closeable {
   private int onDeckSearchers; // number of searchers preparing
   // Lock ordering: one can acquire the openSearcherLock and then the searcherLock, but not
   // vice-versa.
-  private Object searcherLock = new Object(); // the sync object for the searcher
-  private ReentrantLock openSearcherLock =
+  private final Object searcherLock = new Object(); // the sync object for the searcher
+  private final ReentrantLock openSearcherLock =
       new ReentrantLock(true); // used to serialize opens/reopens for absolute ordering
   private final int maxWarmingSearchers; // max number of on-deck searchers allowed
   private final int slowQueryThresholdMillis; // threshold above which a query is considered slow
@@ -2749,7 +2747,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   private RefCounted<SolrIndexSearcher> newHolder(
       SolrIndexSearcher newSearcher, final ArrayDeque<RefCounted<SolrIndexSearcher>> searcherList) {
     RefCounted<SolrIndexSearcher> holder =
-        new RefCounted<SolrIndexSearcher>(newSearcher) {
+        new RefCounted<>(newSearcher) {
           @Override
           public void close() {
             try {
@@ -3119,13 +3117,12 @@ public class SolrCore implements SolrInfoBean, Closeable {
   private final PluginBag<TransformerFactory> transformerFactories =
       new PluginBag<>(TransformerFactory.class, this);
 
-  @SuppressWarnings({"unchecked"})
   <T> Map<String, T> createInstances(Map<String, Class<? extends T>> map) {
     Map<String, T> result = new LinkedHashMap<>(map.size(), 1);
     for (Map.Entry<String, Class<? extends T>> e : map.entrySet()) {
       try {
-        Object o = getResourceLoader().newInstance(e.getValue().getName(), e.getValue());
-        result.put(e.getKey(), (T) o);
+        T o = getResourceLoader().newInstance(e.getValue().getName(), e.getValue());
+        result.put(e.getKey(), o);
       } catch (Exception exp) {
         // should never happen
         throw new SolrException(ErrorCode.SERVER_ERROR, "Unable to instantiate class", exp);
@@ -3370,15 +3367,16 @@ public class SolrCore implements SolrInfoBean, Closeable {
    * some data so that events are triggered.
    */
   private void registerConfListener() {
-    if (!(resourceLoader instanceof ZkSolrResourceLoader)) return;
+    if (!(resourceLoader instanceof ZkSolrResourceLoader)) {
+      return;
+    }
     final ZkSolrResourceLoader zkSolrResourceLoader = (ZkSolrResourceLoader) resourceLoader;
-    if (zkSolrResourceLoader != null)
-      zkSolrResourceLoader
-          .getZkController()
-          .registerConfListenerForCore(
-              zkSolrResourceLoader.getConfigSetZkPath(),
-              this,
-              getConfListener(this, zkSolrResourceLoader));
+    zkSolrResourceLoader
+        .getZkController()
+        .registerConfListenerForCore(
+            zkSolrResourceLoader.getConfigSetZkPath(),
+            this,
+            getConfListener(this, zkSolrResourceLoader));
   }
 
   public static Runnable getConfListener(SolrCore core, ZkSolrResourceLoader zkSolrResourceLoader) {

@@ -172,6 +172,9 @@ public class CoreContainer {
     // Declared up top to ensure this is present before anything else.
     // note: will not be re-added if already there
     ExecutorUtil.addThreadLocalProvider(SolrRequestInfo.getInheritableThreadLocalProvider());
+    if (log.isDebugEnabled()) {
+      log.debug("Adding thread local provider during instantiation of {}", getClass());
+    }
   }
 
   final SolrCores solrCores;
@@ -291,7 +294,7 @@ public class CoreContainer {
               getZkController() != null
                   && getZkController().getOverseer() != null
                   && !getZkController().getOverseer().isClosed(),
-          (r) -> this.runAsync(r));
+          this::runAsync);
 
   private volatile ClusterEventProducer clusterEventProducer;
   private DelegatingPlacementPluginFactory placementPluginFactory;
@@ -309,7 +312,7 @@ public class CoreContainer {
   public static final long INITIAL_CORE_LOAD_COMPLETE = 0x4L;
   private volatile long status = 0L;
 
-  private ExecutorService coreContainerAsyncTaskExecutor =
+  private final ExecutorService coreContainerAsyncTaskExecutor =
       ExecutorUtil.newMDCAwareCachedThreadPool("Core Container Async Task");
 
   /**
@@ -656,7 +659,6 @@ public class CoreContainer {
    * This method allows subclasses to construct a CoreContainer without any default init behavior.
    *
    * @param testConstructor pass (Object)null.
-   * @lucene.experimental
    */
   protected CoreContainer(Object testConstructor) {
     solrHome = null;
@@ -1331,10 +1333,7 @@ public class CoreContainer {
         solrCores.getModifyLock().notifyAll(); // wake up the thread
       }
 
-      customThreadPool.submit(
-          () -> {
-            replayUpdatesExecutor.shutdownAndAwaitTermination();
-          });
+      customThreadPool.submit(replayUpdatesExecutor::shutdownAndAwaitTermination);
 
       if (metricManager != null) {
         metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoBean.Group.node));
@@ -1360,10 +1359,7 @@ public class CoreContainer {
 
       try {
         if (coreAdminHandler != null) {
-          customThreadPool.submit(
-              () -> {
-                coreAdminHandler.shutdown();
-              });
+          customThreadPool.submit(() -> coreAdminHandler.shutdown());
         }
       } catch (Exception e) {
         log.warn("Error shutting down CoreAdminHandler. Continuing to close CoreContainer.", e);
@@ -1378,10 +1374,7 @@ public class CoreContainer {
     } finally {
       try {
         if (shardHandlerFactory != null) {
-          customThreadPool.submit(
-              () -> {
-                shardHandlerFactory.close();
-              });
+          customThreadPool.submit(() -> shardHandlerFactory.close());
         }
       } finally {
         try {
@@ -1578,8 +1571,7 @@ public class CoreContainer {
       try {
         if (getZkController() != null) {
           if (cd.getCloudDescriptor().getCoreNodeName() == null) {
-            throw new SolrException(
-                ErrorCode.SERVER_ERROR, "coreNodeName missing " + parameters.toString());
+            throw new SolrException(ErrorCode.SERVER_ERROR, "coreNodeName missing " + parameters);
           }
           preExistingZkEntry = getZkController().checkIfCoreNodeNameAlreadyExists(cd);
         }
@@ -2197,9 +2189,6 @@ public class CoreContainer {
         throw new SolrException(
             ErrorCode.SERVER_ERROR,
             "Interrupted while unregistering core [" + name + "] from cloud state");
-      } catch (KeeperException e) {
-        throw new SolrException(
-            ErrorCode.SERVER_ERROR, "Error unregistering core [" + name + "] from cloud state", e);
       } catch (Exception e) {
         throw new SolrException(
             ErrorCode.SERVER_ERROR, "Error unregistering core [" + name + "] from cloud state", e);

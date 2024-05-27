@@ -105,11 +105,11 @@ public class SolrConfig implements MapSerializable {
   public static final String DEFAULT_CONF_FILE = "solrconfig.xml";
   private final String resourceName;
 
-  private int znodeVersion;
+  private final int znodeVersion;
   ConfigNode root;
   int rootDataHashCode;
   private final SolrResourceLoader resourceLoader;
-  private Properties substituteProperties;
+  private final Properties substituteProperties;
 
   private RequestParams requestParams;
 
@@ -128,9 +128,9 @@ public class SolrConfig implements MapSerializable {
 
   private int formUploadLimitKB;
 
-  private boolean handleSelect;
+  private final boolean handleSelect;
 
-  private boolean addHttpRequestToContext;
+  private final boolean addHttpRequestToContext;
 
   private final SolrRequestParsers solrRequestParsers;
 
@@ -411,7 +411,7 @@ public class SolrConfig implements MapSerializable {
   private static final AtomicBoolean versionWarningAlreadyLogged = new AtomicBoolean(false);
 
   @SuppressWarnings("ReferenceEquality") // Use of == is intentional here
-  public static final Version parseLuceneVersionString(final String matchVersion) {
+  public static Version parseLuceneVersionString(final String matchVersion) {
     final Version version;
     try {
       version = Version.parseLeniently(matchVersion);
@@ -689,7 +689,7 @@ public class SolrConfig implements MapSerializable {
 
   protected UpdateHandlerInfo updateHandlerInfo;
 
-  private Map<String, List<PluginInfo>> pluginStore = new LinkedHashMap<>();
+  private final Map<String, List<PluginInfo>> pluginStore = new LinkedHashMap<>();
 
   public final int maxWarmingSearchers;
   public final boolean useColdSearcher;
@@ -743,7 +743,7 @@ public class SolrConfig implements MapSerializable {
     private final String cacheControlHeader;
     private final Long maxAge;
     private final LastModFrom lastModFrom;
-    private ConfigNode configNode;
+    private final ConfigNode configNode;
 
     private HttpCachingConfig(SolrConfig conf) {
       configNode = conf.root;
@@ -957,8 +957,7 @@ public class SolrConfig implements MapSerializable {
                 + " after enabling authentication and authorization.");
       }
 
-      for (int i = 0; i < nodes.size(); i++) {
-        ConfigNode node = nodes.get(i);
+      for (ConfigNode node : nodes) {
         String baseDir = node.attr("dir");
         String path = node.attr(PATH);
         if (null != baseDir) {
@@ -1032,15 +1031,11 @@ public class SolrConfig implements MapSerializable {
           if (info.type.equals("searchComponent") && info.name.equals("highlight")) continue;
           items.put(info.name, info);
         }
-        for (Map.Entry<String, Map<String, Object>> e :
-            overlay.getNamedPlugins(plugin.tag).entrySet()) {
-          items.put(e.getKey(), e.getValue());
-        }
+        items.putAll(overlay.getNamedPlugins(plugin.tag));
         result.put(tag, items);
       } else {
         if (plugin.options.contains(MULTI_OK)) {
-          ArrayList<MapSerializable> l = new ArrayList<>();
-          for (PluginInfo info : infos) l.add(info);
+          ArrayList<MapSerializable> l = new ArrayList<>(infos);
           result.put(tag, l);
         } else {
           result.put(tag, infos.get(0));

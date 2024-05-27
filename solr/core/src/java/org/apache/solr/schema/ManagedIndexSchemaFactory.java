@@ -535,7 +535,7 @@ public class ManagedIndexSchemaFactory extends IndexSchemaFactory implements Sol
     }
   }
 
-  private Object schemaUpdateLock = new Object();
+  private final Object schemaUpdateLock = new Object();
 
   public Object getSchemaUpdateLock() {
     return schemaUpdateLock;

@@ -37,7 +37,7 @@ public class ConfigSet {
 
   private final boolean trusted;
 
-  public ConfigSet(
+  ConfigSet(
       String name,
       SolrConfig solrConfig,
       SchemaSupplier indexSchemaSupplier,
@@ -46,7 +46,7 @@ public class ConfigSet {
     this.name = name;
     this.solrConfig = solrConfig;
     this.schemaSupplier = indexSchemaSupplier;
-    schema = schemaSupplier.get(true);
+    this.schema = schemaSupplier.get(true);
     this.properties = properties;
     this.trusted = trusted;
   }
@@ -63,7 +63,9 @@ public class ConfigSet {
    * @param forceFetch get a fresh value and not cached value
    */
   public IndexSchema getIndexSchema(boolean forceFetch) {
-    if (forceFetch) schema = schemaSupplier.get(true);
+    if (forceFetch) {
+      schema = schemaSupplier.get(true);
+    }
     return schema;
   }
 
