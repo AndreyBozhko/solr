@@ -769,6 +769,13 @@ public class TestPackages extends SolrCloudTestCase {
         FILE2,
         "gI6vYUDmSXSXmpNEeK1cwqrp4qTeVQgizGQkd8A4Prx2K8k7c5QlXbcs4lxFAAbbdXz9F4esBqTCiLMjVDHJ5Q==");
 
+    String FILE3 = "/schemapkg/base64-encoder-only.jar";
+    postFileAndWait(
+        cluster,
+        "runtimecode/base64-encoder-only.jar.bin",
+        FILE3,
+        "hfYfy/fDljeU8VVqFFAo6G/tinQ/eRoYDxV5vwf1bCRvgiD8nF5+vlArzflOpkvFJPubV92Svp+BOYFuc1OLdw==");
+
     PackagePayload.AddVersion add = new PackagePayload.AddVersion();
     add.version = "1.0";
     add.pkg = "schemapkg";
@@ -813,7 +820,7 @@ public class TestPackages extends SolrCloudTestCase {
     add = new PackagePayload.AddVersion();
     add.version = "2.0";
     add.pkg = "schemapkg";
-    add.files = Arrays.asList(FILE1);
+    add.files = Arrays.asList(FILE1, FILE3);
     req =
         new V2Request.Builder("/cluster/package")
             .forceV2(true)
