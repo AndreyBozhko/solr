@@ -133,10 +133,14 @@ public class ZkIndexSchemaReader implements OnReconnect {
       }
 
       // session events are not change events, and do not remove the watcher
-      if (Event.EventType.None.equals(event.getType())) {
+      if (Event.EventType.None == event.getType()) {
         return;
       }
       log.info("A schema change: {}, has occurred - updating schema from ZooKeeper ...", event);
+      if (Event.EventType.NodeDeleted == event.getType()) {
+        log.warn("???");
+        return;
+      }
       try {
         indexSchemaReader.updateSchema(this, -1);
       } catch (KeeperException e) {
