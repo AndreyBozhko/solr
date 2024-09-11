@@ -826,7 +826,7 @@ public class TestPackages extends SolrCloudTestCase {
             .findFirst()
             .orElseThrow();
 
-    IndexSchema schemaBeforeReload = getForOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
+    IndexSchema schemaBeforeReload = withOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
 
     add = new PackagePayload.AddVersion();
     add.version = "2.0";
@@ -865,11 +865,11 @@ public class TestPackages extends SolrCloudTestCase {
             ":fieldType:_packageinfo_:version",
             "2.0"));
 
-    IndexSchema schemaAfterReload = getForOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
+    IndexSchema schemaAfterReload = withOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
     assertNotSame("Schema before and after package update", schemaBeforeReload, schemaAfterReload);
   }
 
-  private static <T> T getForOnlyCoreInJetty(
+  private static <T> T withOnlyCoreInJetty(
       JettySolrRunner jetty, Function<SolrCore, T> function) {
     CoreContainer cc = jetty.getCoreContainer();
     assertEquals("expected a single core", 1, cc.getAllCoreNames().size());
