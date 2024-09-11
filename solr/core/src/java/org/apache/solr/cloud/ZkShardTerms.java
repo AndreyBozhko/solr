@@ -417,11 +417,13 @@ public class ZkShardTerms implements AutoCloseable {
     Watcher watcher =
         event -> {
           // session events are not change events, and do not remove the watcher
-          if (Watcher.Event.EventType.None == event.getType()
-              || Watcher.Event.EventType.NodeDeleted == event.getType()) {
+          if (Watcher.Event.EventType.None == event.getType()) {
             return;
           }
           retryRegisterWatcher();
+          if (Watcher.Event.EventType.NodeDeleted == event.getType()) {
+            return;
+          }
           // Some events may be missed during register a watcher, so it is safer to refresh terms
           // after registering watcher
           refreshTerms();
