@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -66,6 +67,7 @@ import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ReflectMapWriter;
 import org.apache.solr.common.util.Utils;
+import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.embedded.JettySolrRunner;
 import org.apache.solr.filestore.ClusterFileStore;
@@ -73,6 +75,7 @@ import org.apache.solr.filestore.TestDistribFileStore;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.search.QParser;
 import org.apache.solr.search.QParserPlugin;
 import org.apache.solr.security.AuthorizationContext;
@@ -817,6 +820,9 @@ public class TestPackages extends SolrCloudTestCase {
             ":fieldType:_packageinfo_:version",
             "1.0"));
 
+    JettySolrRunner jetty = cluster.getRandomJetty(random());
+    IndexSchema schemaBeforeReload = getForOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
+
     add = new PackagePayload.AddVersion();
     add.version = "2.0";
     add.pkg = "schemapkg";
@@ -853,6 +859,19 @@ public class TestPackages extends SolrCloudTestCase {
             "2.0",
             ":fieldType:_packageinfo_:version",
             "2.0"));
+
+    IndexSchema schemaAfterReload = getForOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
+    assertNotSame("Schema before and after package update", schemaBeforeReload, schemaAfterReload);
+  }
+
+  private static <T> T getForOnlyCoreInJetty(
+      JettySolrRunner jetty, Function<SolrCore, ? extends T> function) {
+    CoreContainer cc = jetty.getCoreContainer();
+    assertEquals("expected a single core", 1, cc.getAllCoreNames().size());
+    String coreName = cc.getAllCoreNames().get(0);
+    try (SolrCore core = cc.getCore(coreName)) {
+      return function.apply(core);
+    }
   }
 
   private void verifySchemaComponent(
