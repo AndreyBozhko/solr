@@ -820,7 +820,12 @@ public class TestPackages extends SolrCloudTestCase {
             ":fieldType:_packageinfo_:version",
             "1.0"));
 
-    JettySolrRunner jetty = cluster.getRandomJetty(random());
+    JettySolrRunner jetty =
+        cluster.getJettySolrRunners().stream()
+            .dropWhile(j -> j.getCoreContainer().getAllCoreNames().isEmpty())
+            .findFirst()
+            .orElseThrow();
+
     IndexSchema schemaBeforeReload = getForOnlyCoreInJetty(jetty, SolrCore::getLatestSchema);
 
     add = new PackagePayload.AddVersion();
@@ -865,7 +870,7 @@ public class TestPackages extends SolrCloudTestCase {
   }
 
   private static <T> T getForOnlyCoreInJetty(
-      JettySolrRunner jetty, Function<SolrCore, ? extends T> function) {
+      JettySolrRunner jetty, Function<SolrCore, T> function) {
     CoreContainer cc = jetty.getCoreContainer();
     assertEquals("expected a single core", 1, cc.getAllCoreNames().size());
     String coreName = cc.getAllCoreNames().get(0);
