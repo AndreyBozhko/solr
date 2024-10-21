@@ -28,6 +28,7 @@ import java.io.RandomAccessFile;
 import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1382,13 +1383,13 @@ public class TestRecovery extends SolrTestCaseJ4 {
       assertU(commit());
 
       UpdateLog ulog = h.getCore().getUpdateHandler().getUpdateLog();
-      File logDir = new File(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
+      Path logDir = Path.of(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
 
       h.close();
 
       String[] files = ulog.getLogList(logDir);
       for (String file : files) {
-        Files.delete(new File(logDir, file).toPath());
+        Files.delete(logDir.resolve(file));
       }
 
       assertEquals(0, ulog.getLogList(logDir).length);
@@ -1495,7 +1496,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       files = ulog.getLogList(logDir);
       Arrays.sort(files);
       try (RandomAccessFile raf =
-          new RandomAccessFile(new File(logDir, files[files.length - 1]), "rw")) {
+          new RandomAccessFile(new File(logDir.toFile(), files[files.length - 1]), "rw")) {
         raf.writeChars(
             "This is a trashed log file that really shouldn't work at all, but we'll see...");
       }
@@ -1538,7 +1539,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       UpdateLog.testing_logReplayFinishHook = () -> logReplayFinish.release();
 
       UpdateLog ulog = h.getCore().getUpdateHandler().getUpdateLog();
-      File logDir = new File(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
+      Path logDir = Path.of(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
 
       clearIndex();
       assertU(commit());
@@ -1551,7 +1552,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       String[] files = ulog.getLogList(logDir);
       Arrays.sort(files);
       try (RandomAccessFile raf =
-          new RandomAccessFile(new File(logDir, files[files.length - 1]), "rw")) {
+          new RandomAccessFile(new File(logDir.toFile(), files[files.length - 1]), "rw")) {
         raf.seek(raf.length()); // seek to end
         raf.writeLong(0xffffffffffffffffL);
         raf.writeChars(
@@ -1604,7 +1605,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       TestInjection.skipIndexWriterCommitOnClose = true;
 
       UpdateLog ulog = h.getCore().getUpdateHandler().getUpdateLog();
-      File logDir = new File(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
+      Path logDir = Path.of(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
 
       clearIndex();
       assertU(commit());
@@ -1618,7 +1619,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       String[] files = ulog.getLogList(logDir);
       Arrays.sort(files);
       try (RandomAccessFile raf =
-          new RandomAccessFile(new File(logDir, files[files.length - 1]), "rw")) {
+          new RandomAccessFile(new File(logDir.toFile(), files[files.length - 1]), "rw")) {
         long len = raf.length();
         raf.seek(0); // seek to start
         raf.write(new byte[(int) len]); // zero out file
@@ -1688,7 +1689,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       UpdateLog.testing_logReplayFinishHook = () -> logReplayFinish.release();
 
       UpdateLog ulog = h.getCore().getUpdateHandler().getUpdateLog();
-      File logDir = new File(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
+      Path logDir = Path.of(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
 
       clearIndex();
       assertU(commit());
@@ -1702,7 +1703,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       Arrays.sort(files);
       String fname = files[files.length - 1];
       byte[] content;
-      try (RandomAccessFile raf = new RandomAccessFile(new File(logDir, fname), "rw")) {
+      try (RandomAccessFile raf = new RandomAccessFile(new File(logDir.toFile(), fname), "rw")) {
         raf.seek(raf.length()); // seek to end
         raf.writeLong(0xffffffffffffffffL);
         raf.writeChars(
@@ -1733,7 +1734,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       String fname2 =
           String.format(
               Locale.ROOT, UpdateLog.LOG_FILENAME_PATTERN, UpdateLog.TLOG_NAME, logNumber + 1);
-      try (RandomAccessFile raf = new RandomAccessFile(new File(logDir, fname2), "rw")) {
+      try (RandomAccessFile raf = new RandomAccessFile(new File(logDir.toFile(), fname2), "rw")) {
         raf.write(content);
       }
 
@@ -1920,14 +1921,14 @@ public class TestRecovery extends SolrTestCaseJ4 {
   // stops the core, removes the transaction logs, restarts the core.
   void deleteLogs() throws Exception {
     UpdateLog ulog = h.getCore().getUpdateHandler().getUpdateLog();
-    File logDir = new File(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
+    Path logDir = Path.of(h.getCore().getUpdateHandler().getUpdateLog().getTlogDir());
 
     h.close();
 
     try {
       String[] files = ulog.getLogList(logDir);
       for (String file : files) {
-        Files.delete(new File(logDir, file).toPath());
+        Files.delete(logDir.resolve(file));
       }
 
       assertEquals(0, ulog.getLogList(logDir).length);
