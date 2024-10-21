@@ -51,13 +51,13 @@ public class SolrZkServer {
 
   private Thread zkThread; // the thread running a zookeeper server, only if zkRun is set
 
-  private File dataHome; // o.a.zookeeper.**.QuorumPeerConfig needs a File not a Path
-  private String confHome;
+  private final File dataHome; // o.a.zookeeper.**.QuorumPeerConfig needs a File not a Path
+  private final String confHome;
 
-  public SolrZkServer(String zkRun, String zkHost, File dataHome, String confHome, int solrPort) {
+  public SolrZkServer(String zkRun, String zkHost, Path dataHome, String confHome, int solrPort) {
     this.zkRun = zkRun;
     this.zkHost = zkHost;
-    this.dataHome = dataHome;
+    this.dataHome = dataHome.toFile();
     this.confHome = confHome;
     this.solrPort = solrPort;
   }
