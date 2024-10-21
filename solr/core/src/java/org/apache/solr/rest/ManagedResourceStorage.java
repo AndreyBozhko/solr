@@ -20,10 +20,7 @@ import static org.apache.solr.common.util.Utils.toJSONString;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -66,7 +63,7 @@ public abstract class ManagedResourceStorage {
    * instance, a ManagedResource may use JSON as the data format and an instance of this class to
    * persist and load the JSON bytes to/from some backing store, such as ZooKeeper.
    */
-  public static interface StorageIO {
+  public interface StorageIO {
     String getInfo();
 
     void configure(SolrResourceLoader loader, NamedList<String> initArgs) throws SolrException;
@@ -161,53 +158,66 @@ public abstract class ManagedResourceStorage {
   /** Local file-based storage implementation. */
   public static class FileStorageIO implements StorageIO {
 
-    private String storageDir;
+    private Path storageDir;
 
     @Override
     public void configure(SolrResourceLoader loader, NamedList<String> initArgs)
         throws SolrException {
       String storageDirArg = initArgs.get(STORAGE_DIR_INIT_ARG);
 
-      if (storageDirArg == null || storageDirArg.trim().length() == 0)
+      if (storageDirArg == null || storageDirArg.isBlank())
         throw new IllegalArgumentException(
             "Required configuration parameter '" + STORAGE_DIR_INIT_ARG + "' not provided!");
 
-      File dir = new File(storageDirArg);
-      if (!dir.isDirectory()) dir.mkdirs();
+      Path dir = Path.of(storageDirArg);
+      if (!Files.isDirectory(dir)) {
+        try {
+          Files.createDirectories(dir);
+        } catch (IOException ioe) {
+          throw new RuntimeException(ioe);
+        }
+      }
 
-      storageDir = dir.getAbsolutePath();
+      storageDir = dir.toAbsolutePath();
       log.info("File-based storage initialized to use dir: {}", storageDir);
     }
 
     @Override
     public boolean exists(String storedResourceId) throws IOException {
-      return (new File(storageDir, storedResourceId)).exists();
+      Path storedFile = storageDir.resolve(storedResourceId);
+      assert storedFile.normalize().startsWith(storageDir);
+      return Files.exists(storedFile);
     }
 
     @Override
     public InputStream openInputStream(String storedResourceId) throws IOException {
-      return new FileInputStream(storageDir + "/" + storedResourceId);
+      Path storedFile = storageDir.resolve(storedResourceId);
+      assert storedFile.normalize().startsWith(storageDir);
+      return Files.newInputStream(storedFile);
     }
 
     @Override
     public OutputStream openOutputStream(String storedResourceId) throws IOException {
-      return new FileOutputStream(storageDir + "/" + storedResourceId);
+      Path storedFile = storageDir.resolve(storedResourceId);
+      assert storedFile.normalize().startsWith(storageDir);
+      return Files.newOutputStream(storedFile);
     }
 
     @Override
     public boolean delete(String storedResourceId) throws IOException {
-      File storedFile = new File(storageDir, storedResourceId);
+      Path storedFile = storageDir.resolve(storedResourceId);
+      assert storedFile.normalize().startsWith(storageDir);
       return deleteIfFile(storedFile);
     }
 
     // TODO: this interface should probably be changed, this simulates the old behavior,
     // only throw security exception, just return false otherwise
-    private boolean deleteIfFile(File f) {
-      if (!f.isFile()) {
+    private boolean deleteIfFile(Path f) {
+      if (!Files.isRegularFile(f)) {
         return false;
       }
       try {
-        Files.delete(f.toPath());
+        Files.delete(f);
         return true;
       } catch (IOException cause) {
         return false;
@@ -245,8 +255,7 @@ public abstract class ManagedResourceStorage {
         }
       } catch (Exception exc) {
         String errMsg =
-            String.format(
-                Locale.ROOT, "Failed to verify znode at %s due to: %s", znodeBase, exc.toString());
+            String.format(Locale.ROOT, "Failed to verify znode at %s due to: %s", znodeBase, exc);
         log.error(errMsg, exc);
         throw new SolrException(ErrorCode.SERVER_ERROR, errMsg, exc);
       }
@@ -525,13 +534,7 @@ public abstract class ManagedResourceStorage {
 
     String objectType = (parsed != null) ? parsed.getClass().getSimpleName() : "null";
     if (log.isInfoEnabled()) {
-      log.info(
-          String.format(
-              Locale.ROOT,
-              "Loaded %s at path %s using %s",
-              objectType,
-              storedResourceId,
-              storageIO.getInfo()));
+      log.info("Loaded {} at path {} using {}", objectType, storedResourceId, storageIO.getInfo());
     }
 
     return parsed;
