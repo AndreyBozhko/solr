@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.Console;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URL;
@@ -288,8 +287,8 @@ public class AuthTool extends ToolBase {
         config = config.replace("\n", "").replace("\r", "");
 
         String solrIncludeFilename = cli.getOptionValue("solr-include-file");
-        File includeFile = new File(solrIncludeFilename);
-        if (!includeFile.exists() || !includeFile.canWrite()) {
+        Path includeFile = Path.of(solrIncludeFilename);
+        if (Files.notExists(includeFile) || !Files.isWritable(includeFile)) {
           CLIO.out(
               "Solr include file " + solrIncludeFilename + " doesn't exist or is not writeable.");
           printAuthEnablingInstructions(config);
@@ -297,7 +296,7 @@ public class AuthTool extends ToolBase {
         }
 
         // update the solr.in.sh file to contain the necessary authentication lines
-        updateIncludeFileEnableAuth(includeFile.toPath(), null, config, cli);
+        updateIncludeFileEnableAuth(includeFile, null, config, cli);
         echo(
             "Successfully enabled Kerberos authentication; please restart any running Solr nodes.");
         return 0;
@@ -306,8 +305,8 @@ public class AuthTool extends ToolBase {
         clearSecurityJson(cli, updateIncludeFileOnly);
 
         solrIncludeFilename = cli.getOptionValue("solr-include-file");
-        includeFile = new File(solrIncludeFilename);
-        if (!includeFile.exists() || !includeFile.canWrite()) {
+        includeFile = Path.of(solrIncludeFilename);
+        if (Files.notExists(includeFile) || !Files.isWritable(includeFile)) {
           CLIO.out(
               "Solr include file " + solrIncludeFilename + " doesn't exist or is not writeable.");
           CLIO.out(
@@ -316,7 +315,7 @@ public class AuthTool extends ToolBase {
         }
 
         // update the solr.in.sh file to comment out the necessary authentication lines
-        updateIncludeFileDisableAuth(includeFile.toPath(), cli);
+        updateIncludeFileDisableAuth(includeFile, cli);
         return 0;
 
       default:
@@ -432,30 +431,30 @@ public class AuthTool extends ToolBase {
         }
 
         String solrIncludeFilename = cli.getOptionValue("solr-include-file");
-        File includeFile = new File(solrIncludeFilename);
-        if (!includeFile.exists() || !includeFile.canWrite()) {
+        Path includeFile = Path.of(solrIncludeFilename);
+        if (Files.notExists(includeFile) || !Files.isWritable(includeFile)) {
           CLIO.out(
               "Solr include file " + solrIncludeFilename + " doesn't exist or is not writeable.");
           printAuthEnablingInstructions(username, password);
           System.exit(0);
         }
         String authConfDir = cli.getOptionValue("auth-conf-dir");
-        File basicAuthConfFile = new File(authConfDir + File.separator + "basicAuth.conf");
+        Path basicAuthConfFile = Path.of(authConfDir, "basicAuth.conf");
 
-        if (!basicAuthConfFile.getParentFile().canWrite()) {
-          CLIO.out("Cannot write to file: " + basicAuthConfFile.getAbsolutePath());
+        if (!Files.isWritable(basicAuthConfFile.getParent())) {
+          CLIO.out("Cannot write to file: " + basicAuthConfFile.toAbsolutePath());
           printAuthEnablingInstructions(username, password);
           System.exit(0);
         }
 
         Files.writeString(
-            basicAuthConfFile.toPath(),
+            basicAuthConfFile,
             "httpBasicAuthUser=" + username + "\nhttpBasicAuthPassword=" + password,
             StandardCharsets.UTF_8);
 
         // update the solr.in.sh file to contain the necessary authentication lines
         updateIncludeFileEnableAuth(
-            includeFile.toPath(), basicAuthConfFile.getAbsolutePath(), null, cli);
+            includeFile, basicAuthConfFile.toAbsolutePath().toString(), null, cli);
         final String successMessage =
             String.format(
                 Locale.ROOT,
@@ -469,8 +468,8 @@ public class AuthTool extends ToolBase {
         clearSecurityJson(cli, updateIncludeFileOnly);
 
         solrIncludeFilename = cli.getOptionValue("solr-include-file");
-        includeFile = new File(solrIncludeFilename);
-        if (!includeFile.exists() || !includeFile.canWrite()) {
+        includeFile = Path.of(solrIncludeFilename);
+        if (Files.notExists(includeFile) || !Files.isWritable(includeFile)) {
           CLIO.out(
               "Solr include file " + solrIncludeFilename + " doesn't exist or is not writeable.");
           CLIO.out(
@@ -479,7 +478,7 @@ public class AuthTool extends ToolBase {
         }
 
         // update the solr.in.sh file to comment out the necessary authentication lines
-        updateIncludeFileDisableAuth(includeFile.toPath(), cli);
+        updateIncludeFileDisableAuth(includeFile, cli);
         return 0;
 
       default:

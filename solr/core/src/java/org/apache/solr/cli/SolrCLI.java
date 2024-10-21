@@ -22,12 +22,12 @@ import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.params.CommonParams.SYSTEM_INFO_PATH;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -325,12 +325,12 @@ public class SolrCLI implements CLIO {
     String keyStore = System.getProperty(sysProp);
     if (keyStore == null) return;
 
-    File keyStoreFile = new File(keyStore);
-    if (keyStoreFile.isFile()) return; // configured setting is OK
+    Path keyStoreFile = Path.of(keyStore);
+    if (Files.isRegularFile(keyStoreFile)) return; // configured setting is OK
 
-    keyStoreFile = new File(solrInstallDir, "server/" + keyStore);
-    if (keyStoreFile.isFile()) {
-      System.setProperty(sysProp, keyStoreFile.getAbsolutePath());
+    keyStoreFile = Path.of(solrInstallDir, "server", keyStore);
+    if (Files.isRegularFile(keyStoreFile)) {
+      System.setProperty(sysProp, keyStoreFile.toAbsolutePath().toString());
     } else {
       CLIO.err(
           "WARNING: "
