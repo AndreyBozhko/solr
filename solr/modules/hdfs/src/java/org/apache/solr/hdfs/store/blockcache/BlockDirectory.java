@@ -16,10 +16,11 @@
  */
 package org.apache.solr.hdfs.store.blockcache;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.store.Directory;
@@ -290,12 +291,12 @@ public class BlockDirectory extends FilterDirectory implements ShutdownAwareDire
 
   private long getFileModified(String name) throws IOException {
     if (in instanceof FSDirectory) {
-      File directory = ((FSDirectory) in).getDirectory().toFile();
-      File file = new File(directory, name);
-      if (!file.exists()) {
+      Path directory = ((FSDirectory) in).getDirectory();
+      Path file = directory.resolve(name);
+      if (Files.notExists(file)) {
         throw new FileNotFoundException("File [" + name + "] not found");
       }
-      return file.lastModified();
+      return Files.getLastModifiedTime(file).toMillis();
     } else if (in instanceof HdfsDirectory) {
       return ((HdfsDirectory) in).fileModified(name);
     } else {
@@ -349,7 +350,7 @@ public class BlockDirectory extends FilterDirectory implements ShutdownAwareDire
   boolean useWriteCache(String name, IOContext context) {
     if (!blockCacheWriteEnabled || name.startsWith(IndexFileNames.PENDING_SEGMENTS)) {
       // for safety, don't bother caching pending commits.
-      // the cache does support renaming (renameCacheFile), but thats a scary optimization.
+      // the cache does support renaming (renameCacheFile), but that's a scary optimization.
       return false;
     }
     if (blockCacheFileTypes != null && !isCachableFile(name)) {
