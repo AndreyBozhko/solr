@@ -16,7 +16,6 @@
  */
 package org.apache.solr.handler.admin;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.invoke.MethodHandles;
@@ -28,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.solr.cloud.ZkSolrResourceLoader;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
@@ -195,54 +196,58 @@ public class ShowFileRequestHandler extends RequestHandlerBase implements Permis
   }
 
   // Return the file indicated (or the directory listing) from the local file system.
-  private void showFromFileSystem(SolrQueryRequest req, SolrQueryResponse rsp) {
+  private void showFromFileSystem(SolrQueryRequest req, SolrQueryResponse rsp) throws IOException {
     Path admin = getAdminFileFromFileSystem(req, rsp, hiddenFiles);
 
     if (admin == null) { // exception already recorded
       return;
     }
 
-    File adminFile = admin.toFile();
     // Make sure the file exists, is readable and is not a hidden file
-    if (!adminFile.exists()) {
-      log.error("Can not find: {} [{}]", adminFile.getName(), adminFile.getAbsolutePath());
+    if (Files.notExists(admin)) {
+      log.error("Can not find: {} [{}]", admin.getFileName(), admin.toAbsolutePath());
       rsp.setException(
           new SolrException(
               ErrorCode.NOT_FOUND,
-              "Can not find: " + adminFile.getName() + " [" + adminFile.getAbsolutePath() + "]"));
+              "Can not find: " + admin.getFileName() + " [" + admin.toAbsolutePath() + "]"));
       return;
     }
-    if (!adminFile.canRead() || adminFile.isHidden()) {
-      log.error("Can not show: {} [{}]", adminFile.getName(), adminFile.getAbsolutePath());
+    if (!Files.isReadable(admin) || Files.isHidden(admin)) {
+      log.error("Can not show: {} [{}]", admin.getFileName(), admin.toAbsolutePath());
       rsp.setException(
           new SolrException(
               ErrorCode.NOT_FOUND,
-              "Can not show: " + adminFile.getName() + " [" + adminFile.getAbsolutePath() + "]"));
+              "Can not show: " + admin.getFileName() + " [" + admin.toAbsolutePath() + "]"));
       return;
     }
 
     // Show a directory listing
-    if (adminFile.isDirectory()) {
+    if (Files.isDirectory(admin)) {
       // it's really a directory, just go for it.
-      int basePath = adminFile.getAbsolutePath().length() + 1;
+      Path basePath = admin.toAbsolutePath();
       NamedList<SimpleOrderedMap<Object>> files = new SimpleOrderedMap<>();
-      for (File f : adminFile.listFiles()) {
-        String path = f.getAbsolutePath().substring(basePath);
+      List<Path> adminFiles;
+      try (Stream<Path> directoryFiles = Files.list(basePath)) {
+        adminFiles = directoryFiles.collect(Collectors.toList());
+      }
+      for (Path f : adminFiles) {
+        String path = basePath.relativize(f).toString();
         path = path.replace('\\', '/'); // normalize slashes
 
-        if (isHiddenFile(req, rsp, f.getName().replace('\\', '/'), false, hiddenFiles)) {
+        if (isHiddenFile(
+            req, rsp, f.getFileName().toString().replace('\\', '/'), false, hiddenFiles)) {
           continue;
         }
 
         SimpleOrderedMap<Object> fileInfo = new SimpleOrderedMap<>();
         files.add(path, fileInfo);
-        if (f.isDirectory()) {
+        if (Files.isDirectory(f)) {
           fileInfo.add("directory", true);
         } else {
           // TODO? content type
-          fileInfo.add("size", f.length());
+          fileInfo.add("size", Files.size(f));
         }
-        fileInfo.add("modified", new Date(f.lastModified()));
+        fileInfo.add("modified", new Date(Files.getLastModifiedTime(f).toMillis()));
       }
       rsp.add("files", files);
     } else {
@@ -252,7 +257,7 @@ public class ShowFileRequestHandler extends RequestHandlerBase implements Permis
       params.set(CommonParams.WT, "raw");
       req.setParams(params);
 
-      ContentStreamBase content = new ContentStreamBase.FileStream(adminFile);
+      ContentStreamBase content = new ContentStreamBase.FileStream(admin.toFile());
       content.setContentType(getSafeContentType(req.getParams().get(USE_CONTENT_TYPE)));
 
       rsp.add(RawResponseWriter.CONTENT, content);
