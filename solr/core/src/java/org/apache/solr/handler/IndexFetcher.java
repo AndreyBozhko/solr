@@ -41,18 +41,15 @@ import static org.apache.solr.handler.ReplicationHandler.OFFSET;
 import static org.apache.solr.handler.ReplicationHandler.SIZE;
 import static org.apache.solr.handler.ReplicationHandler.SKIP_COMMIT_ON_LEADER_VERSION_ZERO;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
 import java.net.MalformedURLException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
@@ -436,7 +433,7 @@ public class IndexFetcher {
     Directory indexDir = null;
     String indexDirPath;
     boolean deleteTmpIdxDir = true;
-    File tmpTlogDir = null;
+    Path tmpTlogDir = null;
 
     if (!solrCore.getSolrCoreState().getLastReplicateIndexSuccess()) {
       // if the last replication was not a success, we force a full replication
@@ -811,7 +808,7 @@ public class IndexFetcher {
       Directory tmpIndexDir,
       Directory indexDir,
       boolean deleteTmpIdxDir,
-      File tmpTlogDir,
+      Path tmpTlogDir,
       boolean successfulInstall)
       throws IOException {
     try {
@@ -1079,18 +1076,19 @@ public class IndexFetcher {
     confFilesDownloaded = Collections.synchronizedList(new ArrayList<>());
     Path tmpConfPath =
         solrCore.getResourceLoader().getConfigPath().resolve("conf." + getDateAsStr(new Date()));
-    File tmpconfDir = tmpConfPath.toFile();
     try {
-      boolean status = tmpconfDir.mkdirs();
-      if (!status) {
+      try {
+        Files.createDirectories(tmpConfPath);
+      } catch (IOException ioe) {
         throw new SolrException(
             SolrException.ErrorCode.SERVER_ERROR,
-            "Failed to create temporary config folder: " + tmpconfDir.getName());
+            "Failed to create temporary config folder: " + tmpConfPath,
+            ioe);
       }
       for (Map<String, Object> file : confFilesToDownload) {
         String saveAs = (String) (file.get(ALIAS) == null ? file.get(NAME) : file.get(ALIAS));
         localFileFetcher =
-            new LocalFsFileFetcher(tmpconfDir, file, saveAs, CONF_FILE_SHORT, latestGeneration);
+            new LocalFsFileFetcher(tmpConfPath, file, saveAs, CONF_FILE_SHORT, latestGeneration);
         currentFile = file;
         localFileFetcher.fetchFile();
         confFilesDownloaded.add(new HashMap<>(file));
@@ -1100,7 +1098,7 @@ public class IndexFetcher {
       terminateAndWaitFsyncService();
       copyTmpConfFiles2Conf(tmpConfPath);
     } finally {
-      delTree(tmpconfDir);
+      delTree(tmpConfPath);
     }
   }
 
@@ -1167,22 +1165,22 @@ public class IndexFetcher {
             alwaysDownload);
       }
       if (!compareResult.equal || downloadCompleteIndex || alwaysDownload) {
-        File localFile = new File(indexDirPath, filename);
+        Path localFile = Path.of(indexDirPath, filename);
         if (downloadCompleteIndex
             && doDifferentialCopy
             && compareResult.equal
             && compareResult.checkSummed
-            && localFile.exists()) {
+            && Files.exists(localFile)) {
           if (log.isInfoEnabled()) {
             log.info(
                 "Don't need to download this file. Local file's path is: {}, checksum is: {}",
-                localFile.getAbsolutePath(),
+                localFile.toAbsolutePath(),
                 file.get(CHECKSUM));
           }
           // A hard link here should survive the eventual directory move, and should be more space
           // efficient as compared to a file copy. TODO: Maybe we could do a move safely here?
-          Files.createLink(Path.of(tmpIndexDirPath, filename), localFile.toPath());
-          bytesSkippedCopying += localFile.length();
+          Files.createLink(Path.of(tmpIndexDirPath, filename), localFile);
+          bytesSkippedCopying += Files.size(localFile);
         } else {
           dirFileFetcher =
               new DirectoryFileFetcher(
@@ -1214,15 +1212,15 @@ public class IndexFetcher {
 
   private static Long getUsableSpace(String dir) {
     try {
-      File file = new File(dir);
-      if (!file.exists()) {
-        file = file.getParentFile();
+      Path file = Path.of(dir);
+      if (Files.notExists(file)) {
+        file = file.getParent();
         // this is not a disk directory. so just pretend that there is enough space
-        if (!file.exists()) {
+        if (Files.notExists(file)) {
           return Long.MAX_VALUE;
         }
       }
-      FileStore fileStore = Files.getFileStore(file.toPath());
+      FileStore fileStore = Files.getFileStore(file);
       return fileStore.getUsableSpace();
     } catch (IOException e) {
       throw new SolrException(ErrorCode.SERVER_ERROR, "Could not free disk space", e);
@@ -1488,8 +1486,7 @@ public class IndexFetcher {
    * The conf files are copied to the tmp dir to the conf dir. A backup of the old file is
    * maintained
    */
-  private void copyTmpConfFiles2Conf(Path tmpconfDir) {
-    boolean status = false;
+  private void copyTmpConfFiles2Conf(Path tmpconfDir) throws IOException {
     Path confPath = solrCore.getResourceLoader().getConfigPath();
     int numTempPathElements = tmpconfDir.getNameCount();
     for (Path path : makeTmpConfDirFileList(tmpconfDir)) {
@@ -1501,21 +1498,26 @@ public class IndexFetcher {
             ErrorCode.SERVER_ERROR, "Unable to mkdirs: " + oldPath.getParent(), e);
       }
       if (Files.exists(oldPath)) {
-        File oldFile = oldPath.toFile(); // TODO drop this
-        File backupFile =
-            new File(oldFile.getPath() + "." + getDateAsStr(new Date(oldFile.lastModified())));
-        if (!backupFile.getParentFile().exists()) {
-          status = backupFile.getParentFile().mkdirs();
-          if (!status) {
+        Path backupFile =
+            oldPath.resolveSibling(
+                oldPath.getFileName().toString()
+                    + "."
+                    + getDateAsStr(new Date(Files.getLastModifiedTime(oldPath).toMillis())));
+        if (Files.notExists(backupFile.getParent())) {
+          try {
+            Files.createDirectories(backupFile.getParent());
+          } catch (IOException ioe) {
             throw new SolrException(
-                ErrorCode.SERVER_ERROR, "Unable to mkdirs: " + backupFile.getParentFile());
+                ErrorCode.SERVER_ERROR, "Unable to mkdirs: " + backupFile.getParent(), ioe);
           }
         }
-        status = oldFile.renameTo(backupFile);
-        if (!status) {
+        try {
+          Files.move(oldPath, backupFile);
+        } catch (IOException ioe) {
           throw new SolrException(
               SolrException.ErrorCode.SERVER_ERROR,
-              "Unable to rename: " + oldFile + " to: " + backupFile);
+              "Unable to rename: " + oldPath + " to: " + backupFile,
+              ioe);
         }
       }
       try {
@@ -1532,12 +1534,14 @@ public class IndexFetcher {
    * backup of the old directory is maintained. If the directory move fails, it will try to revert
    * back the original tlog directory.
    */
-  private boolean copyTmpTlogFiles2Tlog(File tmpTlogDir) {
+  private boolean copyTmpTlogFiles2Tlog(Path tmpTlogDir) {
     Path tlogDir =
         FileSystems.getDefault().getPath(solrCore.getUpdateHandler().getUpdateLog().getTlogDir());
     Path backupTlogDir =
         FileSystems.getDefault()
-            .getPath(tlogDir.getParent().toAbsolutePath().toString(), tmpTlogDir.getName());
+            .getPath(
+                tlogDir.getParent().toAbsolutePath().toString(),
+                tmpTlogDir.getFileName().toString());
 
     try {
       Files.move(tlogDir, backupTlogDir, StandardCopyOption.ATOMIC_MOVE);
@@ -1548,7 +1552,8 @@ public class IndexFetcher {
 
     Path src =
         FileSystems.getDefault()
-            .getPath(backupTlogDir.toAbsolutePath().toString(), tmpTlogDir.getName());
+            .getPath(
+                backupTlogDir.toAbsolutePath().toString(), tmpTlogDir.getFileName().toString());
     try {
       Files.move(src, tlogDir, StandardCopyOption.ATOMIC_MOVE);
     } catch (IOException e) {
@@ -1618,9 +1623,9 @@ public class IndexFetcher {
    * SecurityException, otherwise returns Throwable preventing deletion (instead of false), for
    * additional information.
    */
-  static Throwable delete(File file) {
+  static Throwable delete(Path file) {
     try {
-      Files.delete(file.toPath());
+      Files.delete(file);
       return null;
     } catch (SecurityException e) {
       throw e;
@@ -1629,9 +1634,9 @@ public class IndexFetcher {
     }
   }
 
-  static boolean delTree(File dir) {
+  static boolean delTree(Path dir) {
     try {
-      org.apache.lucene.util.IOUtils.rm(dir.toPath());
+      org.apache.lucene.util.IOUtils.rm(dir);
       return true;
     } catch (IOException e) {
       log.warn("Unable to delete directory : {}", dir, e);
@@ -2061,38 +2066,39 @@ public class IndexFetcher {
   }
 
   private static class LocalFsFile implements FileInterface {
-    private File copy2Dir;
+    private final Path copy2Dir;
 
-    FileChannel fileChannel;
-    private FileOutputStream fileOutputStream;
-    File file;
+    private final OutputStream fileOutputStream;
+    Path file;
 
-    LocalFsFile(File dir, String saveAs) throws IOException {
+    LocalFsFile(Path dir, String saveAs) throws IOException {
       this.copy2Dir = dir;
 
-      this.file = new File(copy2Dir, saveAs);
+      this.file = copy2Dir.resolve(saveAs);
 
-      File parentDir = this.file.getParentFile();
-      if (!parentDir.exists()) {
-        if (!parentDir.mkdirs()) {
+      Path parentDir = this.file.getParent();
+      if (Files.notExists(parentDir)) {
+        try {
+          Files.createDirectories(parentDir);
+        } catch (IOException ioe) {
           throw new SolrException(
               SolrException.ErrorCode.SERVER_ERROR,
-              "Failed to create (sub)directory for file: " + saveAs);
+              "Failed to create (sub)directory for file: " + saveAs,
+              ioe);
         }
       }
 
-      this.fileOutputStream = new FileOutputStream(file);
-      this.fileChannel = this.fileOutputStream.getChannel();
+      this.fileOutputStream = Files.newOutputStream(file);
     }
 
     @Override
     public void sync() throws IOException {
-      FileUtils.sync(file);
+      FileUtils.sync(file.toFile());
     }
 
     @Override
     public void write(byte[] buf, int packetSize) throws IOException {
-      fileChannel.write(ByteBuffer.wrap(buf, 0, packetSize));
+      fileOutputStream.write(buf, 0, packetSize);
     }
 
     @Override
@@ -2103,13 +2109,13 @@ public class IndexFetcher {
 
     @Override
     public void delete() throws Exception {
-      Files.delete(file.toPath());
+      Files.delete(file);
     }
   }
 
   private class LocalFsFileFetcher extends FileFetcher {
     LocalFsFileFetcher(
-        File dir,
+        Path dir,
         Map<String, Object> fileDetails,
         String saveAs,
         String solrParamOutput,
