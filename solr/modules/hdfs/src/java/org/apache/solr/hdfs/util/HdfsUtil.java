@@ -16,9 +16,9 @@
  */
 package org.apache.solr.hdfs.util;
 
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 
@@ -33,27 +33,25 @@ public class HdfsUtil {
 
   public static void addHdfsResources(Configuration conf, String confDir) {
 
-    if (confDir != null && confDir.length() > 0) {
-      File confDirFile = new File(confDir);
-      if (!confDirFile.exists()) {
+    if (confDir != null && !confDir.isEmpty()) {
+      Path confDirPath = Path.of(confDir).toAbsolutePath();
+      if (Files.notExists(confDirPath)) {
         throw new SolrException(
-            ErrorCode.SERVER_ERROR,
-            "Resource directory does not exist: " + confDirFile.getAbsolutePath());
+            ErrorCode.SERVER_ERROR, "Resource directory does not exist: " + confDirPath);
       }
-      if (!confDirFile.isDirectory()) {
+      if (!Files.isDirectory(confDirPath)) {
         throw new SolrException(
             ErrorCode.SERVER_ERROR,
-            "Specified resource directory is not a directory" + confDirFile.getAbsolutePath());
+            "Specified resource directory is not a directory" + confDirPath);
       }
-      if (!confDirFile.canRead()) {
+      if (!Files.isReadable(confDirPath)) {
         throw new SolrException(
             ErrorCode.SERVER_ERROR,
-            "Resource directory must be readable by the Solr process: "
-                + confDirFile.getAbsolutePath());
+            "Resource directory must be readable by the Solr process: " + confDirPath);
       }
       for (String file : HADOOP_CONF_FILES) {
-        if (new File(confDirFile, file).exists()) {
-          conf.addResource(new Path(confDir, file));
+        if (Files.exists(confDirPath.resolve(file))) {
+          conf.addResource(new org.apache.hadoop.fs.Path(confDir, file));
         }
       }
     }
