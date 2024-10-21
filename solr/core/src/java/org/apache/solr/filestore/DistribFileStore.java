@@ -43,6 +43,8 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.jcip.annotations.NotThreadSafe;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.http.client.HttpClient;
@@ -250,9 +252,9 @@ public class DistribFileStore implements FileStore {
 
     @SuppressWarnings("unchecked")
     MetaData readMetaData() throws IOException {
-      File file = getRealpath(getMetaPath()).toFile();
-      if (file.exists()) {
-        try (InputStream fis = new FileInputStream(file)) {
+      Path file = getRealpath(getMetaPath());
+      if (Files.exists(file)) {
+        try (InputStream fis = Files.newInputStream(file)) {
           return new MetaData((Map<String, Object>) Utils.fromJSON(fis));
         }
       }
@@ -428,10 +430,10 @@ public class DistribFileStore implements FileStore {
   @Override
   public void get(String path, Consumer<FileEntry> consumer, boolean fetchmissing)
       throws IOException {
-    File file = getRealpath(path).toFile();
-    String simpleName = file.getName();
+    Path file = getRealpath(path);
+    String simpleName = file.getFileName().toString();
     if (isMetaDataFile(simpleName)) {
-      try (InputStream is = new FileInputStream(file)) {
+      try (InputStream is = Files.newInputStream(file)) {
         consumer.accept(
             new FileEntry(null, null, path) {
               // no metadata for metadata file
@@ -459,19 +461,24 @@ public class DistribFileStore implements FileStore {
 
   @Override
   public List<FileDetails> list(String path, Predicate<String> predicate) {
-    File file = getRealpath(path).toFile();
+    Path file = getRealpath(path);
     List<FileDetails> fileDetails = new ArrayList<>();
     FileType type = getType(path, false);
+
     if (type == FileType.DIRECTORY) {
-      file.list(
-          (dir, name) -> {
-            if (predicate == null || predicate.test(name)) {
-              if (!isMetaDataFile(name)) {
-                fileDetails.add(new FileInfo(path + "/" + name).getDetails());
+      try (Stream<Path> directoryFiles = Files.list(file)) {
+        directoryFiles.forEach(
+            p -> {
+              String name = p.getFileName().toString();
+              if (predicate == null || predicate.test(name)) {
+                if (!isMetaDataFile(name)) {
+                  fileDetails.add(new FileInfo(path + "/" + name).getDetails());
+                }
               }
-            }
-            return false;
-          });
+            });
+      } catch (IOException ioe) {
+        throw new RuntimeException(ioe);
+      }
 
     } else if (type == FileType.FILE) {
       fileDetails.add(new FileInfo(path).getDetails());
@@ -550,19 +557,19 @@ public class DistribFileStore implements FileStore {
 
   @Override
   public FileType getType(String path, boolean fetchMissing) {
-    File file = getRealpath(path).toFile();
-    if (!file.exists() && fetchMissing) {
+    Path file = getRealpath(path);
+    if (Files.notExists(file) && fetchMissing) {
       if (fetch(path, null)) {
-        file = getRealpath(path).toFile();
+        file = getRealpath(path);
       }
     }
     return _getFileType(file);
   }
 
-  public static FileType _getFileType(File file) {
-    if (!file.exists()) return FileType.NOFILE;
-    if (file.isDirectory()) return FileType.DIRECTORY;
-    return isMetaDataFile(file.getName()) ? FileType.METADATA : FileType.FILE;
+  public static FileType _getFileType(Path path) {
+    if (Files.notExists(path)) return FileType.NOFILE;
+    if (Files.isDirectory(path)) return FileType.DIRECTORY;
+    return isMetaDataFile(path.getFileName().toString()) ? FileType.METADATA : FileType.FILE;
   }
 
   public static boolean isMetaDataFile(String file) {
@@ -621,11 +628,12 @@ public class DistribFileStore implements FileStore {
     Map<String, byte[]> result = new HashMap<>();
     Path keysDir = _getRealPath(ClusterFileStore.KEYS_DIR, solrHome);
 
-    File[] keyFiles = keysDir.toFile().listFiles();
-    if (keyFiles == null) return result;
-    for (File keyFile : keyFiles) {
-      if (keyFile.isFile() && !isMetaDataFile(keyFile.getName())) {
-        result.put(keyFile.getName(), Files.readAllBytes(keyFile.toPath()));
+    try (Stream<Path> fileStream = Files.list(keysDir)) {
+      List<Path> keyFiles = fileStream.collect(Collectors.toList());
+      for (Path keyFile : keyFiles) {
+        if (Files.isRegularFile(keyFile) && !isMetaDataFile(keyFile.getFileName().toString())) {
+          result.put(keyFile.getFileName().toString(), Files.readAllBytes(keyFile));
+        }
       }
     }
     return result;
