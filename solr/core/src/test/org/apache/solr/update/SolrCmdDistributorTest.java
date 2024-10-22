@@ -110,7 +110,7 @@ public class SolrCmdDistributorTest extends BaseDistributedSearchTestCase {
 
     System.setProperty("configSetBaseDir", TEST_HOME());
 
-    File controlHome = testDir.toPath().resolve("control").toFile();
+    File controlHome = testDir.resolve("control").toFile();
 
     seedSolrHome(controlHome);
     writeCoreProperties(
@@ -127,7 +127,7 @@ public class SolrCmdDistributorTest extends BaseDistributedSearchTestCase {
     for (int i = 0; i < numShards; i++) {
       if (sb.length() > 0) sb.append(',');
       String shardname = "shard" + i;
-      Path shardHome = testDir.toPath().resolve(shardname);
+      Path shardHome = testDir.resolve(shardname);
       seedSolrHome(shardHome.toFile());
       Path coresPath = shardHome.resolve("cores");
       writeCoreProperties(coresPath.resolve(DEFAULT_TEST_CORENAME), DEFAULT_TEST_CORENAME);

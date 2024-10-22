@@ -887,7 +887,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
 
   private File getRelativeSolrHomePath(File solrHome) {
     final Path solrHomePath = solrHome.toPath();
-    final Path curDirPath = new File("").getAbsoluteFile().toPath();
+    final Path curDirPath = Path.of("").toAbsolutePath();
 
     if (!solrHomePath.getRoot().equals(curDirPath.getRoot())) {
       // root of current directory and solrHome are not the same, therefore cannot relativize
@@ -897,14 +897,13 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
     final Path root = solrHomePath.getRoot();
 
     // relativize current directory to root: /tmp/foo -> /tmp/foo/../..
-    final File relativizedCurDir =
-        new File(curDirPath.toFile(), curDirPath.relativize(root).toString());
+    final Path relativizedCurDir = curDirPath.resolve(curDirPath.relativize(root));
 
     // exclude the root from solrHome: /tmp/foo/solrHome -> tmp/foo/solrHome
     final Path solrHomeRelativeToRoot = root.relativize(solrHomePath);
 
     // create the relative solrHome: /tmp/foo/../../tmp/foo/solrHome
-    return new File(relativizedCurDir, solrHomeRelativeToRoot.toString()).getAbsoluteFile();
+    return relativizedCurDir.resolve(solrHomeRelativeToRoot).toFile();
   }
 
   protected void updateMappingsFromZk(List<JettySolrRunner> jettys, List<SolrClient> clients)

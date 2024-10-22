@@ -583,14 +583,14 @@ public abstract class SolrTestCaseJ4 extends SolrTestCase {
    *
    * @see #initCoreDataDir
    */
-  protected static File initAndGetDataDir() {
-    File dataDir = initCoreDataDir;
+  protected static Path initAndGetDataDir() {
+    Path dataDir = initCoreDataDir;
     if (null == dataDir) {
       final int id = dataDirCount.incrementAndGet();
-      dataDir = initCoreDataDir = createTempDir("data-dir-" + id).toFile();
+      dataDir = initCoreDataDir = createTempDir("data-dir-" + id);
       assertNotNull(dataDir);
       if (log.isInfoEnabled()) {
-        log.info("Created dataDir: {}", dataDir.getAbsolutePath());
+        log.info("Created dataDir: {}", dataDir.toAbsolutePath());
       }
     }
     return dataDir;
@@ -747,7 +747,7 @@ public abstract class SolrTestCaseJ4 extends SolrTestCase {
    * @see #initAndGetDataDir()
    * @deprecated use initAndGetDataDir instead of directly accessing this variable
    */
-  @Deprecated protected static volatile File initCoreDataDir;
+  @Deprecated protected static volatile Path initCoreDataDir;
 
   // hack due to File dataDir
   protected static String hdfsDataDir;
@@ -785,7 +785,7 @@ public abstract class SolrTestCaseJ4 extends SolrTestCase {
     h =
         new TestHarness(
             coreName,
-            hdfsDataDir == null ? initAndGetDataDir().getAbsolutePath() : hdfsDataDir,
+            hdfsDataDir == null ? initAndGetDataDir().toAbsolutePath().toString() : hdfsDataDir,
             solrConfig,
             getSchemaFile());
     lrf = h.getRequestFactory("", 0, 20, CommonParams.VERSION, "2.2");
@@ -820,7 +820,10 @@ public abstract class SolrTestCaseJ4 extends SolrTestCase {
     System.setProperty("solr.solr.home", solrHome.toAbsolutePath().toString());
     h =
         new TestHarness(
-            "collection1", initAndGetDataDir().getAbsolutePath(), "solrconfig.xml", "schema.xml");
+            "collection1",
+            initAndGetDataDir().toAbsolutePath().toString(),
+            "solrconfig.xml",
+            "schema.xml");
     lrf = h.getRequestFactory("", 0, 20, CommonParams.VERSION, "2.2");
     return h.getCoreContainer();
   }
@@ -2143,7 +2146,7 @@ public abstract class SolrTestCaseJ4 extends SolrTestCase {
         SolrTestCaseJ4.class.getClassLoader().getResource(name.replace(File.separatorChar, '/'));
     if (url != null) {
       try {
-        return new File(url.toURI());
+        return Path.of(url.toURI()).toFile();
       } catch (Exception e) {
         throw new RuntimeException(
             "Resource was found on classpath, but cannot be resolved to a "
@@ -2151,13 +2154,13 @@ public abstract class SolrTestCaseJ4 extends SolrTestCase {
                 + name);
       }
     }
-    final File file = new File(name);
-    if (file.exists()) {
-      return file;
+    final Path file = Path.of(name);
+    if (Files.exists(file)) {
+      return file.toFile();
     }
     throw new RuntimeException(
         "Cannot find resource in classpath or in file-system (relative to CWD): "
-            + new File(name).getAbsolutePath());
+            + file.toAbsolutePath());
   }
 
   public static String TEST_HOME() {

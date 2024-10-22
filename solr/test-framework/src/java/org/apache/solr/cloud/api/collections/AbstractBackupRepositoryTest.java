@@ -28,12 +28,13 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.file.PathUtils;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -287,10 +288,10 @@ public abstract class AbstractBackupRepositoryTest extends SolrTestCaseJ4 {
     Collections.shuffle(Arrays.asList(plugins), random());
 
     // Given a file on the local disk with an invalid checksum (e.g. could be encrypted).
-    File sourceDir = createTempDir().toFile();
+    Path sourceDir = createTempDir();
     String fileName = "source-file";
     String content = "content";
-    try (OutputStream os = FileUtils.openOutputStream(new File(sourceDir, fileName));
+    try (OutputStream os = PathUtils.newOutputStream(sourceDir.resolve(fileName), false);
         IndexOutput io = new OutputStreamIndexOutput("", "", os, Long.BYTES)) {
       byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
       io.writeBytes(bytes, bytes.length);
@@ -302,7 +303,7 @@ public abstract class AbstractBackupRepositoryTest extends SolrTestCaseJ4 {
     }
 
     BackupRepositoryFactory repoFactory = new BackupRepositoryFactory(plugins);
-    try (SolrResourceLoader resourceLoader = new SolrResourceLoader(sourceDir.toPath())) {
+    try (SolrResourceLoader resourceLoader = new SolrResourceLoader(sourceDir)) {
 
       // When we copy the local file with the standard BackupRepository,
       // then it fails because the checksum is invalid.
@@ -330,21 +331,21 @@ public abstract class AbstractBackupRepositoryTest extends SolrTestCaseJ4 {
   }
 
   private void copyFileToRepo(
-      File dir,
+      Path dir,
       String fileName,
       String repoName,
       BackupRepositoryFactory repoFactory,
       SolrResourceLoader resourceLoader)
       throws IOException, URISyntaxException {
     try (BackupRepository repo = repoFactory.newInstance(resourceLoader, repoName);
-        Directory directory = new NIOFSDirectory(dir.toPath())) {
+        Directory directory = new NIOFSDirectory(dir)) {
       URI destinationDir = repo.resolve(getBaseUri(), "destination-folder");
       repo.copyIndexFileFrom(directory, fileName, destinationDir, fileName);
     }
   }
 
   private void copyFileToDir(
-      File sourceDir,
+      Path sourceDir,
       String fileName,
       File destinationDir,
       String repoName,
@@ -352,7 +353,7 @@ public abstract class AbstractBackupRepositoryTest extends SolrTestCaseJ4 {
       SolrResourceLoader resourceLoader)
       throws IOException {
     try (BackupRepository repo = repoFactory.newInstance(resourceLoader, repoName);
-        Directory sourceDirectory = new NIOFSDirectory(sourceDir.toPath());
+        Directory sourceDirectory = new NIOFSDirectory(sourceDir);
         Directory destinationDirectory = new NIOFSDirectory(destinationDir.toPath())) {
       repo.copyIndexFileFrom(sourceDirectory, fileName, destinationDirectory, fileName);
     }

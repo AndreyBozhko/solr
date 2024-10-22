@@ -19,14 +19,13 @@ package org.apache.solr.cloud;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import java.io.File;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.file.PathUtils;
 import org.apache.solr.BaseDistributedSearchTestCase;
 import org.apache.solr.cli.ConfigSetUploadTool;
 import org.apache.solr.cli.SolrCLI;
@@ -69,7 +68,7 @@ public abstract class AbstractDistribZkTestBase extends BaseDistributedSearchTes
   public void distribSetUp() throws Exception {
     super.distribSetUp();
 
-    Path zkDir = testDir.toPath().resolve("zookeeper/server1/data");
+    Path zkDir = testDir.resolve("zookeeper/server1/data");
     zkServer = new ZkTestServer(zkDir);
     zkServer.run();
 
@@ -99,13 +98,13 @@ public abstract class AbstractDistribZkTestBase extends BaseDistributedSearchTes
 
   @Override
   protected void createServers(int numShards) throws Exception {
-    // give everyone there own solrhome
-    File controlHome =
-        new File(new File(getSolrHome()).getParentFile(), "control" + homeCount.incrementAndGet());
-    FileUtils.copyDirectory(new File(getSolrHome()), controlHome);
-    setupJettySolrHome(controlHome);
+    // give everyone their own solrhome
+    Path controlHome =
+        Path.of(getSolrHome()).resolveSibling("control" + homeCount.incrementAndGet());
+    PathUtils.copyDirectory(Path.of(getSolrHome()), controlHome);
+    setupJettySolrHome(controlHome.toFile());
 
-    controlJetty = createJetty(controlHome, null); // let the shardId default to shard1
+    controlJetty = createJetty(controlHome.toFile(), null); // let the shardId default to shard1
     controlJetty.start();
     controlClient = createNewSolrClient(controlJetty.getLocalPort());
 
@@ -123,11 +122,10 @@ public abstract class AbstractDistribZkTestBase extends BaseDistributedSearchTes
     StringBuilder sb = new StringBuilder();
     for (int i = 1; i <= numShards; i++) {
       if (sb.length() > 0) sb.append(',');
-      // give everyone there own solrhome
-      File jettyHome =
-          new File(new File(getSolrHome()).getParentFile(), "jetty" + homeCount.incrementAndGet());
-      setupJettySolrHome(jettyHome);
-      JettySolrRunner j = createJetty(jettyHome, null, "shard" + (i + 2));
+      // give everyone their own solrhome
+      Path jettyHome = Path.of(getSolrHome()).resolveSibling("jetty" + homeCount.incrementAndGet());
+      setupJettySolrHome(jettyHome.toFile());
+      JettySolrRunner j = createJetty(jettyHome.toFile(), null, "shard" + (i + 2));
       j.start();
       jettys.add(j);
       clients.add(createNewSolrClient(j.getLocalPort()));
@@ -411,11 +409,11 @@ public abstract class AbstractDistribZkTestBase extends BaseDistributedSearchTes
       Path configSetDir, String srcConfigSet, String dstConfigName, String zkAddr)
       throws Exception {
 
-    File fullConfDir = new File(configSetDir.toFile(), srcConfigSet);
+    Path fullConfDir = configSetDir.resolve(srcConfigSet);
     String[] args =
         new String[] {
           "--conf-name", dstConfigName,
-          "--conf-dir", fullConfDir.getAbsolutePath(),
+          "--conf-dir", fullConfDir.toAbsolutePath().toString(),
           "-z", zkAddr
         };
 

@@ -30,18 +30,6 @@ import org.apache.commons.io.FileExistsException;
 /** */
 public class FileUtils {
 
-  /**
-   * Resolves a path relative a base directory.
-   *
-   * <p>This method does what "new File(base,path)" <b>Should</b> do, if it wasn't completely lame:
-   * If path is absolute, then a File for that path is returned; if it's not absolute, then a File
-   * is returned using "path" as a child of "base")
-   */
-  public static File resolvePath(File base, String path) {
-    File r = new File(path);
-    return r.isAbsolute() ? r : new File(base, path);
-  }
-
   public static void copyFile(File src, File destination) throws IOException {
     try (FileChannel in = new FileInputStream(src).getChannel();
         FileChannel out = new FileOutputStream(destination).getChannel()) {
@@ -83,7 +71,7 @@ public class FileUtils {
   }
 
   public static boolean fileExists(String filePathString) {
-    return new File(filePathString).exists();
+    return Files.exists(Path.of(filePathString));
   }
 
   // Files.createDirectories has odd behavior if the path is a symlink and it already exists

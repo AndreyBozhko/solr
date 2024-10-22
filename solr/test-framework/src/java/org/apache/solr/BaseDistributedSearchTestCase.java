@@ -45,7 +45,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.servlet.Filter;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.file.PathUtils;
 import org.apache.lucene.util.Constants;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrResponse;
@@ -175,7 +175,7 @@ public abstract class BaseDistributedSearchTestCase extends SolrTestCaseJ4 {
   protected volatile String[] deadServers;
   protected volatile String shards;
   protected volatile String[] shardsArr;
-  protected volatile File testDir;
+  protected volatile Path testDir;
   protected volatile SolrClient controlClient;
 
   // to stress with higher thread counts and requests, make sure the junit
@@ -263,7 +263,7 @@ public abstract class BaseDistributedSearchTestCase extends SolrTestCaseJ4 {
     SolrTestCaseJ4.resetExceptionIgnores(); // ignore anything with ignore_exception in it
     System.setProperty("solr.test.sys.prop1", "propone");
     System.setProperty("solr.test.sys.prop2", "proptwo");
-    testDir = createTempDir().toFile();
+    testDir = createTempDir();
   }
 
   private volatile boolean distribTearDownCalled = false;
@@ -274,7 +274,7 @@ public abstract class BaseDistributedSearchTestCase extends SolrTestCaseJ4 {
   }
 
   protected JettySolrRunner createControlJetty() throws Exception {
-    Path jettyHome = testDir.toPath().resolve("control");
+    Path jettyHome = testDir.resolve("control");
     File jettyHomeFile = jettyHome.toFile();
     seedSolrHome(jettyHomeFile);
     seedCoreRootDirWithDefaultTestCore(jettyHome.resolve("cores"));
@@ -296,7 +296,7 @@ public abstract class BaseDistributedSearchTestCase extends SolrTestCaseJ4 {
     for (int i = 0; i < numShards; i++) {
       if (sb.length() > 0) sb.append(',');
       final String shardname = "shard" + i;
-      Path jettyHome = testDir.toPath().resolve(shardname);
+      Path jettyHome = testDir.resolve(shardname);
       File jettyHomeFile = jettyHome.toFile();
       seedSolrHome(jettyHomeFile);
       seedCoreRootDirWithDefaultTestCore(jettyHome.resolve("cores"));
@@ -1175,7 +1175,7 @@ public abstract class BaseDistributedSearchTestCase extends SolrTestCaseJ4 {
    * is in place.
    */
   protected void seedSolrHome(File jettyHome) throws IOException {
-    FileUtils.copyDirectory(new File(getSolrHome()), jettyHome);
+    PathUtils.copyDirectory(Path.of(getSolrHome()), jettyHome.toPath());
     String solrxml = getSolrXml();
     if (solrxml != null) {
       Files.copy(

@@ -484,11 +484,10 @@ public class SolrTestCaseHS extends SolrTestCaseJ4 {
       copyConfFile(baseDir, collection, solrconfigFile);
       copyConfFile(baseDir, collection, schemaFile);
 
-      File collDir = new File(baseDir, collection);
+      Path collDir = baseDir.toPath().resolve(collection);
       try (Writer w =
           new OutputStreamWriter(
-              Files.newOutputStream(collDir.toPath().resolve("core.properties")),
-              StandardCharsets.UTF_8)) {
+              Files.newOutputStream(collDir.resolve("core.properties")), StandardCharsets.UTF_8)) {
         Properties coreProps = new Properties();
         coreProps.put("name", "collection1");
         coreProps.put("config", solrconfigFile);

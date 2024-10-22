@@ -690,12 +690,12 @@ public class JettySolrRunner {
       Set<String> registryNames = metricsManager.registryNames();
       for (String registryName : registryNames) {
         MetricRegistry metricsRegisty = metricsManager.registry(registryName);
-        try (PrintStream ps =
+        OutputStream outputStream =
             outputDirectory == null
-                ? new PrintStream(OutputStream.nullOutputStream(), false, StandardCharsets.UTF_8)
-                : new PrintStream(
-                    new File(outputDirectory, registryName + "_" + fileName),
-                    StandardCharsets.UTF_8)) {
+                ? OutputStream.nullOutputStream()
+                : Files.newOutputStream(
+                    outputDirectory.toPath().resolve(registryName + "_" + fileName));
+        try (PrintStream ps = new PrintStream(outputStream, false, StandardCharsets.UTF_8)) {
           ConsoleReporter reporter =
               ConsoleReporter.forRegistry(metricsRegisty)
                   .convertRatesTo(TimeUnit.SECONDS)

@@ -55,7 +55,7 @@ public class PingRequestHandlerTest extends SolrTestCaseJ4 {
   @Before
   public void before() throws IOException {
     // by default, use relative file in dataDir
-    healthcheckFile = new File(initAndGetDataDir(), fileName);
+    healthcheckFile = initAndGetDataDir().resolve(fileName).toFile();
     String fileNameParam = fileName;
 
     // sometimes randomly use an absolute File path instead

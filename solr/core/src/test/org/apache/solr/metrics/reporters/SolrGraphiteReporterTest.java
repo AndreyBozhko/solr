@@ -63,7 +63,7 @@ public class SolrGraphiteReporterTest extends SolrTestCaseJ4 {
               cfg,
               new TestHarness.TestCoresLocator(
                   DEFAULT_TEST_CORENAME,
-                  initAndGetDataDir().getAbsolutePath(),
+                  initAndGetDataDir().toAbsolutePath().toString(),
                   "solrconfig.xml",
                   "schema.xml"));
 
