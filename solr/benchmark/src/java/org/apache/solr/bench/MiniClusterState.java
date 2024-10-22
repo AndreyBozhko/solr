@@ -268,7 +268,7 @@ public class MiniClusterState {
         cluster =
             new MiniSolrCloudCluster.Builder(nodeCount, miniClusterBaseDir)
                 .formatZkServer(false)
-                .addConfig("conf", getFile("src/resources/configs/cloud-minimal/conf").toPath())
+                .addConfig("conf", getFile("src/resources/configs/cloud-minimal/conf"))
                 .configure();
       } catch (Exception e) {
         if (Files.exists(miniClusterBaseDir)) {
@@ -550,17 +550,17 @@ public class MiniClusterState {
   }
 
   /**
-   * Gets file.
+   * Gets file by its name.
    *
    * @param name the name
-   * @return the file
+   * @return the path representing this file
    */
-  public static File getFile(String name) {
+  public static Path getFile(String name) {
     final URL url =
         MiniClusterState.class.getClassLoader().getResource(name.replace(File.separatorChar, '/'));
     if (url != null) {
       try {
-        return new File(url.toURI());
+        return Path.of(url.toURI());
       } catch (Exception e) {
         throw new RuntimeException(
             "Resource was found on classpath, but cannot be resolved to a "
@@ -568,12 +568,12 @@ public class MiniClusterState {
                 + name);
       }
     }
-    File file = new File(name);
-    if (file.exists()) {
+    Path file = Path.of(name);
+    if (Files.exists(file)) {
       return file;
     } else {
-      file = new File("../../../", name);
-      if (file.exists()) {
+      file = Path.of("../../../", name);
+      if (Files.exists(file)) {
         return file;
       }
     }
