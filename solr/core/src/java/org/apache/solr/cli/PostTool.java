@@ -492,8 +492,9 @@ public class PostTool extends ToolBase {
 
   private static Collection<Path> listFiles(Path directory, Predicate<Path> fileFilter)
       throws IOException {
+    Predicate<Path> filter = fileFilter != null ? fileFilter : p -> true;
     try (Stream<Path> directoryFiles = Files.list(directory)) {
-      return directoryFiles.filter(fileFilter).collect(Collectors.toList());
+      return directoryFiles.filter(filter).collect(Collectors.toList());
     }
   }
 
@@ -992,7 +993,7 @@ public class PostTool extends ToolBase {
       return true;
     }
 
-    if (params.isEmpty()) {
+    if (!params.isEmpty()) {
       try {
         uri = new URI(appendParam(uri.toString(), params));
       } catch (URISyntaxException e) {
