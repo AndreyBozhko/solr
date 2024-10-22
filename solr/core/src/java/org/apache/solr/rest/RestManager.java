@@ -23,6 +23,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -420,7 +421,7 @@ public class RestManager {
       Object data = null;
       try {
         data = storage.load(resourceId);
-      } catch (FileNotFoundException fnf) {
+      } catch (FileNotFoundException | NoSuchFileException fnf) {
         // this is ok - simply means there are no managed components added yet
       } catch (IOException ioExc) {
         throw new SolrException(

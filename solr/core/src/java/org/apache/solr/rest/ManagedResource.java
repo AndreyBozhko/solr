@@ -19,6 +19,7 @@ package org.apache.solr.rest;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.NoSuchFileException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -163,7 +164,7 @@ public abstract class ManagedResource {
     Object data = null;
     try {
       data = storage.load(resourceId);
-    } catch (FileNotFoundException fnf) {
+    } catch (FileNotFoundException | NoSuchFileException fnf) {
       log.warn("No stored data found for {}", resourceId);
     } catch (IOException ioExc) {
       throw new SolrException(
@@ -255,7 +256,7 @@ public abstract class ManagedResource {
           // note: the data we're managing now remains in a dubious state
           // however the text analysis component remains unaffected
           // (at least until core reload)
-          log.error("Failed to load data from storage due to: {}", reloadExc);
+          log.error("Failed to load data from storage due to: ", reloadExc);
         }
       }
 
