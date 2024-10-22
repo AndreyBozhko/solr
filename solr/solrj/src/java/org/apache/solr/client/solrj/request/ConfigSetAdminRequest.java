@@ -161,7 +161,7 @@ public abstract class ConfigSetAdminRequest<
      * @see #setUploadStream
      */
     public final Upload setUploadFile(final File file, final String contentType) {
-      final FileStream fileStream = new FileStream(file);
+      final FileStream fileStream = new FileStream(file.toPath());
       fileStream.setContentType(contentType);
       return setUploadStream(fileStream);
     }

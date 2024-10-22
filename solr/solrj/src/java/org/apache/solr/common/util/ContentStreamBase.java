@@ -19,7 +19,6 @@ package org.apache.solr.common.util;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -29,6 +28,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -165,15 +166,27 @@ public abstract class ContentStreamBase implements ContentStream {
 
   /** Construct a <code>ContentStream</code> from a <code>File</code> */
   public static class FileStream extends ContentStreamBase {
-    private final File file;
+    private final Path filePath;
 
+    /**
+     * @deprecated Please use FileStream(Path) instead.
+     */
+    @Deprecated
     public FileStream(File f) {
-      file = f;
+      this(f.toPath());
+    }
+
+    public FileStream(Path p) {
+      filePath = p;
 
       contentType = null; // ??
-      name = file.getName();
-      size = file.length();
-      sourceInfo = file.toURI().toString();
+      name = filePath.getFileName().toString();
+      sourceInfo = filePath.toUri().toString();
+      try {
+        size = Files.size(filePath);
+      } catch (IOException e) {
+        size = 0L;
+      }
     }
 
     @Override
@@ -186,7 +199,7 @@ public abstract class ContentStreamBase implements ContentStream {
 
     @Override
     public InputStream getStream() throws IOException {
-      InputStream is = new FileInputStream(file);
+      InputStream is = Files.newInputStream(filePath);
       String lowerName = name.toLowerCase(Locale.ROOT);
       if (lowerName.endsWith(".gz") || lowerName.endsWith(".gzip")) {
         is = new GZIPInputStream(is);
