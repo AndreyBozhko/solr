@@ -17,17 +17,16 @@
 package org.apache.solr.core;
 
 import java.io.Closeable;
-import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.io.file.PathUtils;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
@@ -339,54 +338,56 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
 
   public void cleanupOldIndexDirectories(
       final String dataDirPath, final String currentIndexDirPath, boolean afterCoreReload) {
-    File dataDir = new File(dataDirPath);
-    if (!dataDir.isDirectory()) {
+    Path dataDir = Path.of(dataDirPath);
+    if (!Files.isDirectory(dataDir)) {
       log.debug(
           "{} does not point to a valid data directory; skipping clean-up of old index directories.",
           dataDirPath);
       return;
     }
 
-    final File currentIndexDir = new File(currentIndexDirPath);
-    File[] oldIndexDirs =
-        dataDir.listFiles(
-            new FileFilter() {
-              @Override
-              public boolean accept(File file) {
-                String fileName = file.getName();
-                return file.isDirectory()
-                    && !file.equals(currentIndexDir)
-                    && (fileName.equals("index") || fileName.matches(INDEX_W_TIMESTAMP_REGEX));
-              }
-            });
+    final Path currentIndexDir = Path.of(currentIndexDirPath);
+    List<Path> oldIndexDirs = null;
+    try (Stream<Path> directoryFiles = Files.list(dataDir)) {
+      oldIndexDirs =
+          directoryFiles
+              .filter(
+                  path -> {
+                    String fileName = path.getFileName().toString();
+                    return Files.isDirectory(path)
+                        && !path.equals(currentIndexDir)
+                        && (fileName.equals("index") || fileName.matches(INDEX_W_TIMESTAMP_REGEX));
+                  })
+              .sorted(Collections.reverseOrder())
+              .collect(Collectors.toList());
+    } catch (IOException ioe) {
+      log.error("???");
+    }
 
-    if (oldIndexDirs == null || oldIndexDirs.length == 0)
+    if (oldIndexDirs == null || oldIndexDirs.isEmpty()) {
       return; // nothing to do (no log message needed)
+    }
 
-    List<File> dirsList = Arrays.asList(oldIndexDirs);
-    dirsList.sort(Collections.reverseOrder());
-
-    int i = 0;
+    List<Path> dirsToRemove = oldIndexDirs;
     if (afterCoreReload) {
-      log.info("Will not remove most recent old directory after reload {}", oldIndexDirs[0]);
-      i = 1;
+      log.info("Will not remove most recent old directory after reload {}", oldIndexDirs.get(0));
+      dirsToRemove = oldIndexDirs.subList(1, oldIndexDirs.size());
     }
     log.info(
         "Found {} old index directories to clean-up under {} afterReload={}",
-        oldIndexDirs.length - i,
+        dirsToRemove.size(),
         dataDirPath,
         afterCoreReload);
-    for (; i < dirsList.size(); i++) {
-      File dir = dirsList.get(i);
-      String dirToRmPath = dir.getAbsolutePath();
+    for (Path dir : dirsToRemove) {
+      String dirToRmPath = dir.toAbsolutePath().toString();
       try {
         if (deleteOldIndexDirectory(dirToRmPath)) {
           log.info("Deleted old index directory: {}", dirToRmPath);
         } else {
           log.warn("Delete old index directory {} failed.", dirToRmPath);
         }
-      } catch (IOException ioExc) {
-        log.error("Failed to delete old directory {} due to: ", dir.getAbsolutePath(), ioExc);
+      } catch (IOException ioe) {
+        log.error("Failed to delete old directory {} due to: ", dir.toAbsolutePath(), ioe);
       }
     }
   }
