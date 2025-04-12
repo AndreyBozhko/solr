@@ -63,8 +63,8 @@ public class MMapDirectoryFactory extends StandardDirectoryFactory {
   }
 
   @Override
-  protected Directory create(String path, LockFactory lockFactory) throws IOException {
-    MMapDirectory mapDirectory = new MMapDirectory(Path.of(path), lockFactory, maxChunk);
+  protected Directory create(Path path, LockFactory lockFactory) throws IOException {
+    MMapDirectory mapDirectory = new MMapDirectory(path, lockFactory, maxChunk);
     mapDirectory.setPreload(preload);
     return mapDirectory;
   }

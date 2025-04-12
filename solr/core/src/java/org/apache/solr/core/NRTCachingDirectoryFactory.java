@@ -47,8 +47,8 @@ public class NRTCachingDirectoryFactory extends StandardDirectoryFactory {
   }
 
   @Override
-  protected Directory create(String path, LockFactory lockFactory) throws IOException {
+  protected Directory create(Path path, LockFactory lockFactory) throws IOException {
     return new NRTCachingDirectory(
-        FSDirectory.open(Path.of(path), lockFactory), maxMergeSizeMB, maxCachedMB);
+        FSDirectory.open(path, lockFactory), maxMergeSizeMB, maxCachedMB);
   }
 }

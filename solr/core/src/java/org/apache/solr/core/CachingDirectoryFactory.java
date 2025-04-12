@@ -46,20 +46,20 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link DirectoryFactory} impl base class for caching Directory instances per path. Most
  * DirectoryFactory implementations will want to extend this class and simply implement {@link
- * DirectoryFactory#create(String, LockFactory)}.
+ * DirectoryFactory#create(Path, LockFactory)}.
  *
  * <p>This is an expert class and these API's are subject to change.
  */
 public abstract class CachingDirectoryFactory extends DirectoryFactory {
   protected static class CacheValue {
-    public final String path;
+    public final Path path;
     public final Directory directory;
     // for debug
     // final Exception originTrace;
     // use the setter!
     private boolean deleteOnClose = false;
 
-    public CacheValue(String path, Directory directory) {
+    public CacheValue(Path path, Directory directory) {
       this.path = Objects.requireNonNull(path);
       this.directory = Objects.requireNonNull(directory);
       this.closeEntries.add(this);
@@ -87,7 +87,7 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  protected Map<String, CacheValue> byPathCache = new HashMap<>();
+  protected Map<Path, CacheValue> byPathCache = new HashMap<>();
 
   protected IdentityHashMap<Directory, CacheValue> byDirectoryCache = new IdentityHashMap<>();
 
@@ -106,9 +106,9 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
   private boolean closed;
 
   public interface CloseListener {
-    public void postClose();
+    void postClose();
 
-    public void preClose();
+    void preClose();
   }
 
   @Override
@@ -117,14 +117,8 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
       if (!byDirectoryCache.containsKey(dir)) {
         throw new IllegalArgumentException("Unknown directory: " + dir + " " + byDirectoryCache);
       }
-      List<CloseListener> listeners = closeListeners.get(dir);
-      if (listeners == null) {
-        listeners = new ArrayList<>();
-        closeListeners.put(dir, listeners);
-      }
+      List<CloseListener> listeners = closeListeners.computeIfAbsent(dir, k -> new ArrayList<>());
       listeners.add(closeListener);
-
-      closeListeners.put(dir, listeners);
     }
   }
 
@@ -367,15 +361,14 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
   }
 
   private static boolean isSubPath(CacheValue cacheValue, CacheValue otherCacheValue) {
-    return Path.of(otherCacheValue.path).startsWith(Path.of(cacheValue.path));
+    return otherCacheValue.path.startsWith(cacheValue.path);
   }
 
   @Override
-  public boolean exists(String path) throws IOException {
+  public boolean exists(Path path) throws IOException {
     // we go by the persistent storage ...
-    Path dirPath = Path.of(path);
-    if (Files.isReadable(dirPath)) {
-      try (DirectoryStream<Path> directory = Files.newDirectoryStream(dirPath)) {
+    if (Files.isReadable(path)) {
+      try (DirectoryStream<Path> directory = Files.newDirectoryStream(path)) {
         return directory.iterator().hasNext();
       }
     }
@@ -389,9 +382,9 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
    * java.lang.String, boolean)
    */
   @Override
-  public final Directory get(String path, DirContext dirContext, String rawLockType)
+  public final Directory get(Path path, DirContext dirContext, String rawLockType)
       throws IOException {
-    String fullPath = normalize(path);
+    Path fullPath = normalize(path);
     Directory directory;
     CacheValue cacheValue;
     synchronized (this) {
@@ -534,7 +527,7 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
-  public void remove(String path) throws IOException {
+  public void remove(Path path) throws IOException {
     remove(path, false);
   }
 
@@ -544,7 +537,7 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
-  public void remove(String path, boolean deleteAfterCoreClose) throws IOException {
+  public void remove(Path path, boolean deleteAfterCoreClose) throws IOException {
     synchronized (this) {
       CacheValue val = byPathCache.get(normalize(path));
       if (val == null) {
@@ -570,16 +563,8 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
-  public String normalize(String path) throws IOException {
-    path = stripTrailingSlash(path);
-    return path;
-  }
-
-  protected String stripTrailingSlash(String path) {
-    if (path.endsWith("/")) {
-      path = path.substring(0, path.length() - 1);
-    }
-    return path;
+  public Path normalize(Path path) throws IOException {
+    return path.toAbsolutePath().normalize();
   }
 
   /**
@@ -588,8 +573,8 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
    * @return paths in the cache which have not been marked "done"
    * @see #doneWithDirectory
    */
-  public synchronized Set<String> getLivePaths() {
-    HashSet<String> livePaths = new HashSet<>();
+  public synchronized Set<Path> getLivePaths() {
+    HashSet<Path> livePaths = new HashSet<>();
     for (CacheValue val : byPathCache.values()) {
       if (!val.doneWithDir) {
         livePaths.add(val.path);
@@ -599,8 +584,8 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
-  protected boolean deleteOldIndexDirectory(String oldDirPath) throws IOException {
-    Set<String> livePaths = getLivePaths();
+  protected boolean deleteOldIndexDirectory(Path oldDirPath) throws IOException {
+    Set<Path> livePaths = getLivePaths();
     if (livePaths.contains(oldDirPath)) {
       log.warn(
           "Cannot delete directory {} as it is still being referenced in the cache!", oldDirPath);
@@ -610,7 +595,7 @@ public abstract class CachingDirectoryFactory extends DirectoryFactory {
     return super.deleteOldIndexDirectory(oldDirPath);
   }
 
-  protected synchronized String getPath(Directory directory) {
+  protected synchronized Path getPath(Directory directory) {
     return byDirectoryCache.get(directory).path;
   }
 

@@ -17,6 +17,7 @@
 package org.apache.solr.core;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockFactory;
@@ -31,7 +32,7 @@ public class ByteBuffersDirectoryFactoryTest extends SolrTestCaseJ4 {
     ByteBuffersDirectoryFactory factory =
         new ByteBuffersDirectoryFactory() {
           @Override
-          protected Directory create(String path, LockFactory lockFactory) {
+          protected Directory create(Path path, LockFactory lockFactory) {
             return directory;
           }
         };

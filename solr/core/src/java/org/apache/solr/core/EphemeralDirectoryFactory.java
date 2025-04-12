@@ -17,31 +17,22 @@
 package org.apache.solr.core;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import org.apache.lucene.store.Directory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Directory provider for implementations that do not persist over reboots. */
 public abstract class EphemeralDirectoryFactory extends CachingDirectoryFactory {
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   @Override
-  public boolean exists(String path) throws IOException {
-    String fullPath = normalize(path);
+  public boolean exists(Path path) throws IOException {
+    Path fullPath = normalize(path);
     synchronized (this) {
       final CacheValue cacheValue = byPathCache.get(fullPath);
       if (null == cacheValue) {
         return false;
       }
       final Directory directory = cacheValue.directory;
-      if (null == directory) {
-        return false;
-      }
-      if (0 < directory.listAll().length) {
-        return true;
-      }
-      return false;
+      return directory.listAll().length > 0;
     }
   }
 
@@ -51,7 +42,7 @@ public abstract class EphemeralDirectoryFactory extends CachingDirectoryFactory 
   }
 
   @Override
-  public boolean isAbsolute(String path) {
+  public boolean isAbsolute(Path path) {
     return true;
   }
 
@@ -61,13 +52,13 @@ public abstract class EphemeralDirectoryFactory extends CachingDirectoryFactory 
   }
 
   @Override
-  public void remove(String path) throws IOException {
+  public void remove(Path path) throws IOException {
     // ram dir does not persist its dir anywhere
   }
 
   @Override
   public void cleanupOldIndexDirectories(
-      final String dataDirPath, final String currentIndexDirPath, boolean reload) {
+      final Path dataDirPath, final String currentIndexDirPath, boolean reload) {
     // currently a no-op
   }
 }

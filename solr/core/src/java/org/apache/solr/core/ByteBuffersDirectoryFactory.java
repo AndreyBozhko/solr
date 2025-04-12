@@ -17,6 +17,7 @@
 package org.apache.solr.core;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockFactory;
@@ -41,7 +42,7 @@ public class ByteBuffersDirectoryFactory extends EphemeralDirectoryFactory {
   }
 
   @Override
-  protected Directory create(String path, LockFactory lockFactory) throws IOException {
+  protected Directory create(Path path, LockFactory lockFactory) throws IOException {
     return new ByteBuffersDirectory(lockFactory);
   }
 }

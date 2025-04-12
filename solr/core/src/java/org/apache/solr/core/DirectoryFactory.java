@@ -102,7 +102,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    *
    * @throws IOException If there is a low-level I/O error.
    */
-  protected abstract Directory create(String path, LockFactory lockFactory) throws IOException;
+  protected abstract Directory create(Path path, LockFactory lockFactory) throws IOException;
 
   /**
    * Creates a new LockFactory for a given path.
@@ -123,7 +123,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    *
    * @throws IOException If there is a low-level I/O error.
    */
-  public abstract boolean exists(String path) throws IOException;
+  public abstract boolean exists(Path path) throws IOException;
 
   /**
    * Removes the Directory's persistent storage. For example: A file system impl may remove the on
@@ -149,7 +149,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    * @param afterCoreClose whether to wait until after the core is closed.
    * @throws IOException If there is a low-level I/O error.
    */
-  public abstract void remove(String path, boolean afterCoreClose) throws IOException;
+  public abstract void remove(Path path, boolean afterCoreClose) throws IOException;
 
   /**
    * This remove is special in that it may be called even after the factory has been closed. Remove
@@ -158,7 +158,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    * @param path to remove
    * @throws IOException If there is a low-level I/O error.
    */
-  public abstract void remove(String path) throws IOException;
+  public abstract void remove(Path path) throws IOException;
 
   /**
    * @param directory to calculate size of
@@ -174,7 +174,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    * @return size in bytes
    * @throws IOException on low level IO error
    */
-  public long size(String path) throws IOException {
+  public long size(Path path) throws IOException {
     Directory dir = get(path, DirContext.DEFAULT, null);
     long size;
     try {
@@ -206,7 +206,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
     try {
       dir.deleteFile(toName);
     } catch (FileNotFoundException | NoSuchFileException e) {
-
+      // do nothing
     } catch (Exception e) {
       log.error("Exception deleting file", e);
     }
@@ -220,7 +220,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    *
    * @throws IOException If there is a low-level I/O error.
    */
-  public abstract Directory get(String path, DirContext dirContext, String rawLockType)
+  public abstract Directory get(Path path, DirContext dirContext, String rawLockType)
       throws IOException;
 
   /**
@@ -255,7 +255,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    * @return normalized path
    * @throws IOException on io error
    */
-  public String normalize(String path) throws IOException {
+  public Path normalize(Path path) throws IOException {
     return path;
   }
 
@@ -263,9 +263,9 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    * @param path the path to check
    * @return true if absolute, as in not relative
    */
-  public boolean isAbsolute(String path) {
+  public boolean isAbsolute(Path path) {
     // back compat
-    return Path.of(path).isAbsolute();
+    return path.isAbsolute();
   }
 
   public static long sizeOfDirectory(Directory directory) throws IOException {
@@ -282,7 +282,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
     return size;
   }
 
-  public static long sizeOf(Directory directory, String file) throws IOException {
+  public static long sizeOf(Directory directory, String file) {
     try {
       return directory.fileLength(file);
     } catch (IOException e) {
@@ -294,7 +294,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
   /** Delete the files in the Directory */
   public static boolean empty(Directory dir) {
     boolean isSuccess = true;
-    String contents[];
+    String[] contents;
     try {
       contents = dir.listAll();
       if (contents != null) {
@@ -326,7 +326,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
    * @param cd core descriptor instance
    * @return a String with absolute path to data directory
    */
-  public String getDataHome(CoreDescriptor cd) throws IOException {
+  public Path getDataHome(CoreDescriptor cd) {
     Path dataDir;
     if (dataHomePath != null) {
       Path instanceDirLastPath =
@@ -337,15 +337,14 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
       dataDir = cd.getInstanceDir().resolve(cd.getDataDir());
     }
     assert dataDir.isAbsolute();
-    return dataDir.toString();
+    return dataDir;
   }
 
   public void cleanupOldIndexDirectories(
-      final String dataDirPath, final String currentIndexDirPath, boolean afterCoreReload)
+      final Path dataDirPath, final String currentIndexDirPath, boolean afterCoreReload)
       throws IOException {
 
-    Path dataDirFile = Path.of(dataDirPath);
-    if (!Files.isDirectory(dataDirFile)) {
+    if (!Files.isDirectory(dataDirPath)) {
       log.debug(
           "{} does not point to a valid data directory; skipping clean-up of old index directories.",
           dataDirPath);
@@ -354,11 +353,11 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
 
     final Path currentIndexDir = Path.of(currentIndexDirPath);
     List<Path> dirsList;
-    try (Stream<Path> oldIndexDirs = Files.list(dataDirFile)) {
+    try (Stream<Path> oldIndexDirs = Files.list(dataDirPath)) {
       dirsList =
           oldIndexDirs
               .filter(
-                  (file) -> {
+                  file -> {
                     String fileName = file.getFileName().toString();
                     return Files.isDirectory(file)
                         && !file.equals(currentIndexDir)
@@ -367,7 +366,6 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
               .sorted(Comparator.reverseOrder())
               .toList();
     }
-    ;
 
     if (dirsList.isEmpty()) {
       return; // nothing to do (no log message needed)
@@ -390,8 +388,8 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
     dirsList.stream()
         .skip(i)
         .forEach(
-            (entry) -> {
-              String dirToRmPath = entry.toAbsolutePath().toString();
+            entry -> {
+              Path dirToRmPath = entry.toAbsolutePath();
               try {
                 if (deleteOldIndexDirectory(dirToRmPath)) {
                   log.info("Deleted old index directory: {}", dirToRmPath);
@@ -407,10 +405,9 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
 
   // Extension point to allow subclasses to infuse additional code when deleting old index
   // directories
-  protected boolean deleteOldIndexDirectory(String oldDirPath) throws IOException {
-    Path dirToRm = Path.of(oldDirPath);
-    PathUtils.deleteDirectory(dirToRm);
-    return !Files.isDirectory(dirToRm);
+  protected boolean deleteOldIndexDirectory(Path oldDirPath) throws IOException {
+    PathUtils.deleteDirectory(oldDirPath);
+    return !Files.isDirectory(oldDirPath);
   }
 
   public void initCoreContainer(CoreContainer cc) {
@@ -423,8 +420,8 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
   // special hack to work with FilterDirectory
   protected Directory getBaseDir(Directory dir) {
     Directory baseDir = dir;
-    while (baseDir instanceof FilterDirectory) {
-      baseDir = ((FilterDirectory) baseDir).getDelegate();
+    while (baseDir instanceof FilterDirectory filterDirectory) {
+      baseDir = filterDirectory.getDelegate();
     }
 
     return baseDir;

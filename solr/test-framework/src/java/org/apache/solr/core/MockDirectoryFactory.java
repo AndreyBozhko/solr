@@ -33,9 +33,9 @@ public class MockDirectoryFactory extends EphemeralDirectoryFactory {
       "solr.tests.allow_reading_files_still_open_for_write";
   public static final String SOLR_TESTS_USING_MOCK_DIRECTORY_WRAPPER =
       "solr.tests.using_mock_directory_wrapper";
-  private boolean allowReadingFilesStillOpenForWrite =
+  private final boolean allowReadingFilesStillOpenForWrite =
       Boolean.getBoolean(SOLR_TESTS_ALLOW_READING_FILES_STILL_OPEN_FOR_WRITE);
-  private boolean useMockDirectoryWrapper =
+  private final boolean useMockDirectoryWrapper =
       Boolean.getBoolean(SOLR_TESTS_USING_MOCK_DIRECTORY_WRAPPER);
 
   @Override
@@ -44,7 +44,7 @@ public class MockDirectoryFactory extends EphemeralDirectoryFactory {
   }
 
   @Override
-  protected Directory create(String path, LockFactory lockFactory) throws IOException {
+  protected Directory create(Path path, LockFactory lockFactory) throws IOException {
     Directory dir;
     if (useMockDirectoryWrapper) dir = LuceneTestCase.newMockDirectory();
     else dir = LuceneTestCase.newDirectory(); // we ignore the given lock factory
@@ -81,15 +81,15 @@ public class MockDirectoryFactory extends EphemeralDirectoryFactory {
       cdir = ((NRTCachingDirectory) dir).getDelegate();
     }
     if (cdir instanceof TrackingDirectoryWrapper) {
-      cdir = ((TrackingDirectoryWrapper) dir).getDelegate();
+      cdir = ((TrackingDirectoryWrapper) cdir).getDelegate();
     }
     return cdir;
   }
 
   @Override
-  public boolean isAbsolute(String path) {
+  public boolean isAbsolute(Path path) {
     // TODO: kind of a hack - we don't know what the delegate is, so
     // we treat it as file based since this works on most ephem impls
-    return Path.of(path).isAbsolute();
+    return path.isAbsolute();
   }
 }

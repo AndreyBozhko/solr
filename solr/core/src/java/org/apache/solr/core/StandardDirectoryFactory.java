@@ -48,35 +48,25 @@ public class StandardDirectoryFactory extends CachingDirectoryFactory {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   @Override
-  protected Directory create(String path, LockFactory lockFactory) throws IOException {
-    return FSDirectory.open(Path.of(path), lockFactory);
+  protected Directory create(Path path, LockFactory lockFactory) throws IOException {
+    return FSDirectory.open(path, lockFactory);
   }
 
   @Override
-  protected LockFactory createLockFactory(String rawLockType) throws IOException {
+  protected LockFactory createLockFactory(String rawLockType) {
     if (null == rawLockType) {
       rawLockType = DirectoryFactory.LOCK_TYPE_NATIVE;
       log.warn("No lockType configured, assuming '{}'.", rawLockType);
     }
     final String lockType = rawLockType.toLowerCase(Locale.ROOT).trim();
-    switch (lockType) {
-      case DirectoryFactory.LOCK_TYPE_SIMPLE:
-        return SimpleFSLockFactory.INSTANCE;
-      case DirectoryFactory.LOCK_TYPE_NATIVE:
-        return NativeFSLockFactory.INSTANCE;
-      case DirectoryFactory.LOCK_TYPE_SINGLE:
-        return new SingleInstanceLockFactory();
-      case DirectoryFactory.LOCK_TYPE_NONE:
-        return NoLockFactory.INSTANCE;
-      default:
-        throw new SolrException(
-            SolrException.ErrorCode.SERVER_ERROR, "Unrecognized lockType: " + rawLockType);
-    }
-  }
-
-  @Override
-  public String normalize(String path) throws IOException {
-    return super.normalize(Path.of(path).toAbsolutePath().normalize().toString());
+    return switch (lockType) {
+      case DirectoryFactory.LOCK_TYPE_SIMPLE -> SimpleFSLockFactory.INSTANCE;
+      case DirectoryFactory.LOCK_TYPE_NATIVE -> NativeFSLockFactory.INSTANCE;
+      case DirectoryFactory.LOCK_TYPE_SINGLE -> new SingleInstanceLockFactory();
+      case DirectoryFactory.LOCK_TYPE_NONE -> NoLockFactory.INSTANCE;
+      default -> throw new SolrException(
+          SolrException.ErrorCode.SERVER_ERROR, "Unrecognized lockType: " + rawLockType);
+    };
   }
 
   @Override
@@ -86,7 +76,7 @@ public class StandardDirectoryFactory extends CachingDirectoryFactory {
 
   @Override
   protected synchronized void removeDirectory(CacheValue cacheValue) throws IOException {
-    Path dirPath = Path.of(cacheValue.path);
+    Path dirPath = cacheValue.path;
     PathUtils.deleteDirectory(dirPath);
   }
 
