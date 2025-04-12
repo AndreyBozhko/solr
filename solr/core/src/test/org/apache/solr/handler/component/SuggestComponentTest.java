@@ -16,6 +16,7 @@
  */
 package org.apache.solr.handler.component;
 
+import java.nio.file.Path;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.core.SolrCore;
@@ -818,7 +819,7 @@ public class SuggestComponentTest extends SolrTestCaseJ4 {
   private void reloadCore(boolean createNewCore) throws Exception {
     if (createNewCore) {
       SolrCore core = h.getCore();
-      String dataDir1 = core.getDataDir();
+      Path dataDir1 = core.getDataDir();
       h.close();
       createCore();
       SolrCore createdCore = h.getCore();

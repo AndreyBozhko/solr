@@ -69,18 +69,16 @@ public class SnapShooter {
 
   @Deprecated
   public SnapShooter(SolrCore core, String location, String snapshotName) {
-    String snapDirStr = null;
+    Path snapDirStr = null;
     // Note - This logic is only applicable to the usecase where a shared file-system is exposed via
     // local file-system interface (primarily for backwards compatibility). For other use-cases,
     // users will be required to specify "location" where the backup should be stored.
     if (location == null) {
       snapDirStr = core.getDataDir();
     } else {
-      snapDirStr =
-          core.getCoreDescriptor().getInstanceDir().resolve(location).normalize().toString();
+      snapDirStr = core.getCoreDescriptor().getInstanceDir().resolve(location).normalize();
     }
-    initialize(
-        new LocalFileSystemRepository(), core, Path.of(snapDirStr).toUri(), snapshotName, null);
+    initialize(new LocalFileSystemRepository(), core, snapDirStr.toUri(), snapshotName, null);
   }
 
   public SnapShooter(

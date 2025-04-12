@@ -41,7 +41,7 @@ public class RAMDirectoryFactoryTest extends SolrTestCase {
             return directory;
           }
         };
-    String path = "/fake/path";
+    Path path = Path.of("/fake/path");
     Directory dir1 = factory.get(path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
     Directory dir2 = factory.get(path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
     assertEquals(
@@ -58,7 +58,7 @@ public class RAMDirectoryFactoryTest extends SolrTestCase {
   private void dotestOpenSucceedForEmptyDir() throws IOException {
     RAMDirectoryFactory factory = new RAMDirectoryFactory();
     Directory dir =
-        factory.get("/fake/path", DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
+        factory.get(Path.of("/fake/path"), DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
     assertNotNull(
         "RAMDirectoryFactory should create RefCntRamDirectory even if the path doesn't lead "
             + "to index directory on the file system",

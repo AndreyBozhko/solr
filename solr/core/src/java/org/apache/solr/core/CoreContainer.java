@@ -317,7 +317,7 @@ public class CoreContainer {
   public static final long INITIAL_CORE_LOAD_COMPLETE = 0x4L;
   private volatile long status = 0L;
 
-  private ExecutorService coreContainerAsyncTaskExecutor =
+  private final ExecutorService coreContainerAsyncTaskExecutor =
       ExecutorUtil.newMDCAwareCachedThreadPool("Core Container Async Task");
 
   /**
@@ -1723,7 +1723,6 @@ public class CoreContainer {
    *     introduce a race condition, see getCore() for the place it would be a problem
    * @return the newly created core
    */
-  @SuppressWarnings("resource")
   private SolrCore createFromDescriptor(
       CoreDescriptor dcore, boolean publishState, boolean newCollection) {
 
@@ -1888,7 +1887,7 @@ public class CoreContainer {
     String registryName =
         SolrMetricManager.getRegistryName(SolrInfoBean.Group.core, dcore.getName());
     DirectoryFactory df = DirectoryFactory.loadDirectoryFactory(config, this, registryName);
-    String dataDir = SolrCore.findDataDir(df, null, config, dcore);
+    Path dataDir = SolrCore.findDataDir(df, null, config, dcore);
 
     String tmpIdxDirName =
         "index." + new SimpleDateFormat(SnapShooter.DATE_FMT, Locale.ROOT).format(new Date());

@@ -303,7 +303,7 @@ public abstract class AbstractInstallShardTest extends SolrCloudTestCase {
       final Directory dir =
           core.getDirectoryFactory()
               .get(
-                  coreIndexDir.toString(),
+                  coreIndexDir,
                   DirectoryFactory.DirContext.DEFAULT,
                   core.getSolrConfig().indexConfig.lockType);
       try {

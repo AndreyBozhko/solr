@@ -38,8 +38,8 @@ public class CoreMergeIndexesAdminHandlerTest extends SolrTestCaseJ4 {
     initCore("solrconfig.xml", "schema.xml");
   }
 
-  private static String WRAPPED_FAILING_MSG = "Error handling 'mergeindexes' action";
-  private static String FAILING_CAUSE_MSG =
+  private static final String WRAPPED_FAILING_MSG = "Error handling 'mergeindexes' action";
+  private static final String FAILING_CAUSE_MSG =
       "Creating a directory using FailingDirectoryFactoryException always fails";
 
   public static class FailingDirectoryFactory extends MockFSDirectoryFactory {

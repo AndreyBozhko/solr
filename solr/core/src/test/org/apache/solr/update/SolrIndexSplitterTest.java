@@ -113,7 +113,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir1.toString(),
+                  indexDir1,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       DirectoryReader reader = DirectoryReader.open(directory);
@@ -132,7 +132,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir2.toString(),
+                  indexDir2,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       reader = DirectoryReader.open(directory);
@@ -203,7 +203,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir1.toString(),
+                  indexDir1,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       DirectoryReader reader = DirectoryReader.open(directory);
@@ -222,7 +222,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir2.toString(),
+                  indexDir2,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       reader = DirectoryReader.open(directory);
@@ -290,9 +290,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
       } finally {
         if (request != null) request.close();
       }
-      @SuppressWarnings("resource")
       final EmbeddedSolrServer server1 = new EmbeddedSolrServer(h.getCoreContainer(), "split1");
-      @SuppressWarnings("resource")
       final EmbeddedSolrServer server2 = new EmbeddedSolrServer(h.getCoreContainer(), "split2");
       server1.commit(true, true);
       server2.commit(true, true);
@@ -359,7 +357,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir1.toString(),
+                  indexDir1,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       DirectoryReader reader = DirectoryReader.open(directory);
@@ -370,7 +368,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir2.toString(),
+                  indexDir2,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       reader = DirectoryReader.open(directory);
@@ -381,7 +379,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir3.toString(),
+                  indexDir3,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       reader = DirectoryReader.open(directory);
@@ -461,7 +459,7 @@ public class SolrIndexSplitterTest extends SolrTestCaseJ4 {
           h.getCore()
               .getDirectoryFactory()
               .get(
-                  indexDir.toString(),
+                  indexDir,
                   DirectoryFactory.DirContext.DEFAULT,
                   h.getCore().getSolrConfig().indexConfig.lockType);
       DirectoryReader reader = DirectoryReader.open(directory);

@@ -18,6 +18,7 @@ package org.apache.solr.core.snapshots;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,11 +61,11 @@ public class SolrSnapshotMetaDataManager {
 
   /** A class defining the meta-data for a specific snapshot. */
   public static class SnapshotMetaData {
-    private String name;
-    private String indexDirPath;
-    private long generationNumber;
+    private final String name;
+    private final Path indexDirPath;
+    private final long generationNumber;
 
-    public SnapshotMetaData(String name, String indexDirPath, long generationNumber) {
+    public SnapshotMetaData(String name, Path indexDirPath, long generationNumber) {
       super();
       this.name = name;
       this.indexDirPath = indexDirPath;
@@ -75,7 +76,7 @@ public class SolrSnapshotMetaDataManager {
       return name;
     }
 
-    public String getIndexDirPath() {
+    public Path getIndexDirPath() {
       return indexDirPath;
     }
 
@@ -166,7 +167,7 @@ public class SolrSnapshotMetaDataManager {
    * @param gen The generation number for the {@linkplain IndexCommit} being snapshotted.
    * @throws IOException in case of I/O errors.
    */
-  public synchronized void snapshot(String name, String indexDirPath, long gen) throws IOException {
+  public synchronized void snapshot(String name, Path indexDirPath, long gen) throws IOException {
     Objects.requireNonNull(name);
 
     if (log.isInfoEnabled()) {
@@ -245,7 +246,7 @@ public class SolrSnapshotMetaDataManager {
    * @param genNumber The generation number for the {@linkplain IndexCommit} to be checked.
    * @return true if the snapshot is created. false otherwise.
    */
-  public synchronized boolean isSnapshotted(String indexDirPath, long genNumber) {
+  public synchronized boolean isSnapshotted(Path indexDirPath, long genNumber) {
     return !nameToDetailsMapping.isEmpty()
         && nameToDetailsMapping.values().stream()
             .anyMatch(
@@ -278,7 +279,7 @@ public class SolrSnapshotMetaDataManager {
    * @param indexDirPath The index directory path.
    * @return a list snapshots stored in the specified directory.
    */
-  public synchronized Collection<SnapshotMetaData> listSnapshotsInIndexDir(String indexDirPath) {
+  public synchronized Collection<SnapshotMetaData> listSnapshotsInIndexDir(Path indexDirPath) {
     return nameToDetailsMapping.values().stream()
         .filter(entry -> indexDirPath.equals(entry.getIndexDirPath()))
         .collect(Collectors.toList());
@@ -297,7 +298,7 @@ public class SolrSnapshotMetaDataManager {
     Optional<IndexCommit> result = Optional.empty();
     Optional<SnapshotMetaData> metaData = getSnapshotMetaData(commitName);
     if (metaData.isPresent()) {
-      String indexDirPath = metaData.get().getIndexDirPath();
+      Path indexDirPath = metaData.get().getIndexDirPath();
       long gen = metaData.get().getGenerationNumber();
 
       Directory d =
@@ -310,7 +311,7 @@ public class SolrSnapshotMetaDataManager {
                 .filter(ic -> ic.getGeneration() == gen)
                 .findAny();
 
-        if (!result.isPresent()) {
+        if (result.isEmpty()) {
           log.warn(
               "Unable to find commit with generation {} in the directory {}", gen, indexDirPath);
         }
@@ -334,7 +335,7 @@ public class SolrSnapshotMetaDataManager {
       out.writeVInt(nameToDetailsMapping.size());
       for (Entry<String, SnapshotMetaData> ent : nameToDetailsMapping.entrySet()) {
         out.writeString(ent.getKey());
-        out.writeString(ent.getValue().getIndexDirPath());
+        out.writeString(ent.getValue().getIndexDirPath().toString());
         out.writeVLong(ent.getValue().getGenerationNumber());
       }
       success = true;
@@ -387,7 +388,7 @@ public class SolrSnapshotMetaDataManager {
               String indexDirPath = in.readString();
               long commitGen = in.readVLong();
               snapshotMetaDataMapping.put(
-                  name, new SnapshotMetaData(name, indexDirPath, commitGen));
+                  name, new SnapshotMetaData(name, Path.of(indexDirPath), commitGen));
             }
           } catch (IOException ioe2) {
             // Save first exception & throw in the end

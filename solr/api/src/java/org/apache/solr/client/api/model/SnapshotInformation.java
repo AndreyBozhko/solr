@@ -20,6 +20,7 @@ import static org.apache.solr.client.api.model.Constants.SNAPSHOT_GENERATION_NUM
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.nio.file.Path;
 
 /**
  * Contained in {@link ListCoreSnapshotsResponse}, this holds information for a given core's
@@ -32,9 +33,9 @@ public class SnapshotInformation {
 
   @Schema(description = "The path to the directory containing the index files.")
   @JsonProperty
-  public final String indexDirPath;
+  public final Path indexDirPath;
 
-  public SnapshotInformation(long generationNumber, String indexDirPath) {
+  public SnapshotInformation(long generationNumber, Path indexDirPath) {
     this.generationNumber = generationNumber;
     this.indexDirPath = indexDirPath;
   }

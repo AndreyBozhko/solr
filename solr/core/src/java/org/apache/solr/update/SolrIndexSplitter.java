@@ -19,6 +19,7 @@ package org.apache.solr.update;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -286,7 +287,7 @@ public class SolrIndexSplitter {
       } else {
         if (splitMethod == SplitMethod.LINK) {
           SolrCore subCore = cmd.cores.get(partitionNumber);
-          String path = subCore.getDataDir() + INDEX_PREFIX + timestamp;
+          Path path = subCore.getDataDir().resolve(INDEX_PREFIX + timestamp);
           t = timings.sub("hardLinkCopy");
           t.resume();
           // copy by hard-linking
@@ -334,7 +335,7 @@ public class SolrIndexSplitter {
               SolrIndexWriter.create(
                   core,
                   partitionName,
-                  path,
+                  Path.of(path),
                   core.getDirectoryFactory(),
                   true,
                   core.getLatestSchema(),
@@ -419,7 +420,7 @@ public class SolrIndexSplitter {
       t = timings.sub("switchSubIndexes");
       for (int partitionNumber = 0; partitionNumber < numPieces; partitionNumber++) {
         SolrCore subCore = cmd.cores.get(partitionNumber);
-        String indexDirPath = subCore.getIndexDir();
+        Path indexDirPath = subCore.getIndexDir();
 
         log.debug("Switching directories");
         String hardLinkPath = subCore.getDataDir() + INDEX_PREFIX + timestamp;
@@ -456,7 +457,7 @@ public class SolrIndexSplitter {
             }
           }
           // switch back if necessary and remove the hardlinked dir
-          String hardLinkPath = subCore.getDataDir() + INDEX_PREFIX + timestamp;
+          Path hardLinkPath = subCore.getDataDir().resolve(INDEX_PREFIX + timestamp);
           try {
             dir =
                 subCore
@@ -487,7 +488,7 @@ public class SolrIndexSplitter {
         t = timings.sub("cleanSubIndex");
         for (int partitionNumber = 0; partitionNumber < numPieces; partitionNumber++) {
           SolrCore subCore = cmd.cores.get(partitionNumber);
-          String oldIndexPath = subCore.getDataDir() + "index";
+          Path oldIndexPath = subCore.getDataDir().resolve("index");
           Directory indexDir = null;
           try {
             indexDir =

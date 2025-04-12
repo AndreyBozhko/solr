@@ -196,9 +196,9 @@ public class ReplicationHandler extends RequestHandlerBase
 
   private IndexFetcher pollingIndexFetcher;
 
-  private ReentrantLock indexFetchLock = new ReentrantLock();
+  private final ReentrantLock indexFetchLock = new ReentrantLock();
 
-  private ExecutorService restoreExecutor =
+  private final ExecutorService restoreExecutor =
       ExecutorUtil.newMDCAwareSingleThreadExecutor(new SolrNamedThreadFactory("restoreExecutor"));
 
   private volatile Future<Boolean> restoreFuture;
@@ -207,7 +207,7 @@ public class ReplicationHandler extends RequestHandlerBase
 
   private String includeConfFiles;
 
-  private NamedList<String> confFileNameAlias = new NamedList<>();
+  private final NamedList<String> confFileNameAlias = new NamedList<>();
 
   private boolean isLeader = false;
 
@@ -231,7 +231,7 @@ public class ReplicationHandler extends RequestHandlerBase
 
   volatile NamedList<?> snapShootDetails;
 
-  private AtomicBoolean replicationEnabled = new AtomicBoolean(true);
+  private final AtomicBoolean replicationEnabled = new AtomicBoolean(true);
 
   private Long pollIntervalNs;
   private String pollIntervalStr;
@@ -245,7 +245,7 @@ public class ReplicationHandler extends RequestHandlerBase
   }
 
   /** Disable the timer task for polling */
-  private AtomicBoolean pollDisabled = new AtomicBoolean(false);
+  private final AtomicBoolean pollDisabled = new AtomicBoolean(false);
 
   String getPollInterval() {
     return pollIntervalStr;
@@ -509,7 +509,7 @@ public class ReplicationHandler extends RequestHandlerBase
       // If location is not provided then assume that the restore index is present inside the data
       // directory.
       if (location == null) {
-        location = core.getDataDir();
+        location = core.getDataDir().toString();
       }
     }
     if ("file".equals(repo.createURI("x").getScheme())) {
@@ -656,7 +656,7 @@ public class ReplicationHandler extends RequestHandlerBase
     } else {
       repo = new LocalFileSystemRepository();
       if (location == null) {
-        location = core.getDataDir();
+        location = core.getDataDir().toString();
       } else {
         location =
             core.getCoreDescriptor().getInstanceDir().resolve(location).normalize().toString();
@@ -1223,7 +1223,6 @@ public class ReplicationHandler extends RequestHandlerBase
   }
 
   @Override
-  @SuppressWarnings({"resource"})
   public void inform(SolrCore core) {
     this.core = core;
     registerCloseHook();

@@ -1000,10 +1000,10 @@ public class TestReplicationHandler extends SolrTestCaseJ4 {
     CoreContainer cores = jetty.getCoreContainer();
     Collection<SolrCore> theCores = cores.getCores();
     for (SolrCore core : theCores) {
-      String ddir = core.getDataDir();
+      Path ddir = core.getDataDir();
       CachingDirectoryFactory dirFactory = getCachingDirectoryFactory(core);
       synchronized (dirFactory) {
-        Set<String> livePaths = dirFactory.getLivePaths();
+        Set<Path> livePaths = dirFactory.getLivePaths();
         // one for data, one for the index under data and one for the snapshot metadata.
         // we also allow one extra index dir - it may not be removed until the core is closed
         if (afterReload) {
@@ -1017,7 +1017,7 @@ public class TestReplicationHandler extends SolrTestCaseJ4 {
         // :TODO: assert that one of the paths is a subpath of hte other
       }
       if (dirFactory instanceof StandardDirectoryFactory) {
-        try (Stream<Path> files = Files.list(Path.of(ddir))) {
+        try (Stream<Path> files = Files.list(ddir)) {
           List<Path> filesList = files.toList();
           System.out.println(filesList);
           // we also allow one extra index dir - it may not be removed until the core is closed
@@ -1033,8 +1033,8 @@ public class TestReplicationHandler extends SolrTestCaseJ4 {
     }
   }
 
-  private int indexDirCount(String ddir) throws IOException {
-    try (Stream<Path> files = Files.list(Path.of(ddir))) {
+  private int indexDirCount(Path ddir) throws IOException {
+    try (Stream<Path> files = Files.list(ddir)) {
       return (int)
           files
               .filter(

@@ -319,8 +319,11 @@ public class SolrConfig implements MapSerializable {
       }
       fieldValueCacheConfig = conf;
       useColdSearcher = get("query").get("useColdSearcher").boolVal(false);
-      dataDir = get("dataDir").txt();
-      if (dataDir != null && dataDir.length() == 0) dataDir = null;
+
+      String dataDirTxt = get("dataDir").txt();
+      if (dataDirTxt != null && !dataDirTxt.isEmpty()) {
+        dataDir = Path.of(dataDirTxt);
+      }
 
       org.apache.solr.search.SolrIndexSearcher.initRegenerators(this);
 
@@ -682,12 +685,12 @@ public class SolrConfig implements MapSerializable {
 
   protected UpdateHandlerInfo updateHandlerInfo;
 
-  private Map<String, List<PluginInfo>> pluginStore = new LinkedHashMap<>();
+  private final Map<String, List<PluginInfo>> pluginStore = new LinkedHashMap<>();
 
   public final int maxWarmingSearchers;
   public final boolean useColdSearcher;
   public final Version luceneMatchVersion;
-  protected String dataDir;
+  protected Path dataDir;
   public final int slowQueryThresholdMillis; // threshold above which a query is considered slow
 
   private final HttpCachingConfig httpCachingConfig;
@@ -871,7 +874,7 @@ public class SolrConfig implements MapSerializable {
     return updateHandlerInfo;
   }
 
-  public String getDataDir() {
+  public Path getDataDir() {
     return dataDir;
   }
 

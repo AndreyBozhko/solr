@@ -17,6 +17,7 @@
 
 package org.apache.solr.core;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +54,7 @@ public class DirectoryFactoriesTest extends SolrTestCaseJ4 {
   }
 
   private void testExistsBehavior(Class<? extends DirectoryFactory> clazz) throws Exception {
-    final String path = createTempDir().toString() + "/" + clazz + "_somedir";
+    final Path path = createTempDir().resolve(clazz + "_somedir");
     DirectoryFactory dirFac = null;
     try {
       dirFac = clazz.getConstructor().newInstance();

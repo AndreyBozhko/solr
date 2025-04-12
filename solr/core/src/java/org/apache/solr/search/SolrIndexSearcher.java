@@ -22,6 +22,7 @@ import com.codahale.metrics.Gauge;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -187,7 +188,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   // only for addIndexes etc (no fieldcache)
   private final DirectoryReader rawReader;
 
-  private final String path;
+  private final Path path;
   private boolean releaseDirectory;
 
   private final StatsCache statsCache;
@@ -195,7 +196,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   private SolrMetricsContext solrMetricsContext;
 
   private static DirectoryReader getReader(
-      SolrCore core, SolrIndexConfig config, DirectoryFactory directoryFactory, String path)
+      SolrCore core, SolrIndexConfig config, DirectoryFactory directoryFactory, Path path)
       throws IOException {
     final Directory dir = directoryFactory.get(path, DirContext.DEFAULT, config.lockType);
     try {
@@ -345,7 +346,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
   public SolrIndexSearcher(
       SolrCore core,
-      String path,
+      Path path,
       IndexSchema schema,
       SolrIndexConfig config,
       String name,
@@ -370,7 +371,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   @SuppressWarnings({"unchecked", "rawtypes"})
   public SolrIndexSearcher(
       SolrCore core,
-      String path,
+      Path path,
       IndexSchema schema,
       String name,
       DirectoryReader r,
@@ -532,7 +533,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
     return cachingEnabled;
   }
 
-  public String getPath() {
+  public Path getPath() {
     return path;
   }
 
@@ -2059,7 +2060,6 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
       if (!MultiThreadedSearcher.allowMT(pf.postFilter, cmd)) {
         log.trace("SINGLE THREADED search, skipping collector manager in getDocListAndSetNC");
 
-        @SuppressWarnings({"rawtypes"})
         final TopDocsCollector<? extends ScoreDoc> topCollector = buildTopDocsCollector(len, cmd);
         final DocSetCollector setCollector = new DocSetCollector(maxDoc);
         MaxScoreCollector maxScoreCollector = null;
@@ -2547,23 +2547,25 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   public IndexFingerprint getIndexFingerprint(long maxVersion) throws IOException {
     final SolrIndexSearcher searcher = this;
     final AtomicReference<IOException> exception = new AtomicReference<>();
-    try {
-      return searcher.getTopReaderContext().leaves().stream()
-          .map(
-              ctx -> {
-                try {
-                  return searcher.getCore().getIndexFingerprint(searcher, ctx, maxVersion);
-                } catch (IOException e) {
-                  exception.set(e);
-                  return null;
-                }
-              })
-          .filter(java.util.Objects::nonNull)
-          .reduce(new IndexFingerprint(maxVersion), IndexFingerprint::reduce);
 
-    } finally {
-      if (exception.get() != null) throw exception.get();
+    var result =
+        searcher.getTopReaderContext().leaves().stream()
+            .map(
+                ctx -> {
+                  try {
+                    return searcher.getCore().getIndexFingerprint(searcher, ctx, maxVersion);
+                  } catch (IOException e) {
+                    exception.set(e);
+                    return null;
+                  }
+                })
+            .filter(java.util.Objects::nonNull)
+            .reduce(new IndexFingerprint(maxVersion), IndexFingerprint::reduce);
+
+    if (exception.get() != null) {
+      throw exception.get();
     }
+    return result;
   }
 
   /////////////////////////////////////////////////////////////////////

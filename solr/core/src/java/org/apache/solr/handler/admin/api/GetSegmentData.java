@@ -149,8 +149,8 @@ public class GetSegmentData extends JerseyResource implements SegmentsApi {
       response.info.core = coreSummary;
       coreSummary.startTime =
           core.getStartTimeStamp().getTime() + "(" + core.getStartTimeStamp() + ")";
-      coreSummary.dataDir = core.getDataDir();
-      coreSummary.indexDir = core.getIndexDir();
+      coreSummary.dataDir = core.getDataDir().toString();
+      coreSummary.indexDir = core.getIndexDir().toString();
       coreSummary.sizeInGB = (double) core.getIndexSize() / GB;
 
       RefCounted<IndexWriter> iwRef = core.getSolrCoreState().getIndexWriter(core);
@@ -297,7 +297,7 @@ public class GetSegmentData extends JerseyResource implements SegmentsApi {
     segmentInfo.hasFieldUpdates = segmentCommitInfo.hasFieldUpdates();
     segmentInfo.sizeInBytes = segmentCommitInfo.sizeInBytes();
     segmentInfo.size = segmentCommitInfo.info.maxDoc();
-    Long timestamp = Long.parseLong(segmentCommitInfo.info.getDiagnostics().get("timestamp"));
+    long timestamp = Long.parseLong(segmentCommitInfo.info.getDiagnostics().get("timestamp"));
     segmentInfo.age = new Date(timestamp);
     segmentInfo.source = segmentCommitInfo.info.getDiagnostics().get("source");
     segmentInfo.version = segmentCommitInfo.info.getVersion().toString();
@@ -346,18 +346,9 @@ public class GetSegmentData extends JerseyResource implements SegmentsApi {
                       size = dir.fileLength(f);
                     } catch (IOException e) {
                     }
-                    return new Pair<String, Long>(f, size);
+                    return new Pair<>(f, size);
                   })
-              .sorted(
-                  (p1, p2) -> {
-                    if (p1.second() > p2.second()) {
-                      return -1;
-                    } else if (p1.second() < p2.second()) {
-                      return 1;
-                    } else {
-                      return 0;
-                    }
-                  })
+              .sorted((p1, p2) -> p2.second().compareTo(p1.second()))
               .collect(Collectors.toList());
       if (!files.isEmpty()) {
         final var topFiles = new HashMap<String, String>();

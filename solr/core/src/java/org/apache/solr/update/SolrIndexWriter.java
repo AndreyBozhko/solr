@@ -21,6 +21,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -68,8 +69,8 @@ public class SolrIndexWriter extends IndexWriter {
 
   String name;
   private DirectoryFactory directoryFactory;
-  private InfoStream infoStream;
-  private Directory directory;
+  private final InfoStream infoStream;
+  private final Directory directory;
 
   // metrics
   private long majorMergeDocs = 512 * 1024;
@@ -95,7 +96,7 @@ public class SolrIndexWriter extends IndexWriter {
   public static SolrIndexWriter create(
       SolrCore core,
       String name,
-      String path,
+      Path path,
       DirectoryFactory directoryFactory,
       boolean create,
       IndexSchema schema,
@@ -134,7 +135,7 @@ public class SolrIndexWriter extends IndexWriter {
   private SolrIndexWriter(
       SolrCore core,
       String name,
-      String path,
+      Path path,
       Directory directory,
       boolean create,
       IndexSchema schema,

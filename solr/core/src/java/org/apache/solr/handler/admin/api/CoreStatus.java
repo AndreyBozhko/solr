@@ -44,7 +44,7 @@ import org.apache.solr.util.RefCounted;
 /**
  * V2 APIs for getting the status of one or all cores.
  *
- * <p>This API (GET /v2/cores/coreName is analogous to the v1 /admin/cores?action=status command.
+ * <p>This API (GET /v2/cores/coreName) is analogous to the v1 /admin/cores?action=status command.
  */
 public class CoreStatus extends CoreAdminAPIBase implements CoreApis.GetStatus {
 
@@ -137,7 +137,7 @@ public class CoreStatus extends CoreAdminAPIBase implements CoreApis.GetStatus {
           if (core != null) {
             info.name = core.getName();
             info.instanceDir = core.getInstancePath().toString();
-            info.dataDir = normalizeToOsPathSeparator(core.getDataDir());
+            info.dataDir = normalizeToOsPathSeparator(core.getDataDir().toString());
             info.config = core.getConfigResource();
             info.schema = core.getSchemaResource();
             info.startTime = core.getStartTimeStamp();

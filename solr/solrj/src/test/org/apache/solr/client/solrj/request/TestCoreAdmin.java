@@ -105,7 +105,7 @@ public class TestCoreAdmin extends AbstractEmbeddedSolrServerTestCase {
         assertFalse(core.getCoreDescriptor().isLoadOnStartup());
         assertTrue(coreProveIt.getCoreDescriptor().isLoadOnStartup());
 
-        logDir = Path.of(core.getUpdateHandler().getUpdateLog().getTlogDir());
+        logDir = core.getUpdateHandler().getUpdateLog().getTlogDir();
       }
 
       assertEquals(dataDir.resolve("ulog").resolve("tlog").toString(), logDir.toString());

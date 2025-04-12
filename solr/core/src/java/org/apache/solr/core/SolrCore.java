@@ -218,7 +218,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   private final SolrResourceLoader resourceLoader;
   private volatile IndexSchema schema;
   private final NamedList<?> configSetProperties;
-  private final String dataDir;
+  private final Path dataDir;
   private final UpdateHandler updateHandler;
   private final SolrCoreState solrCoreState;
 
@@ -264,7 +264,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   public volatile boolean indexEnabled = true;
   public volatile boolean readOnly = false;
 
-  private PackageListeners packageListeners = new PackageListeners(this);
+  private final PackageListeners packageListeners = new PackageListeners(this);
 
   public Date getStartTimeStamp() {
     return startTime;
@@ -382,15 +382,15 @@ public class SolrCore implements SolrInfoBean, Closeable {
     return configSetProperties;
   }
 
-  public String getDataDir() {
+  public Path getDataDir() {
     return dataDir;
   }
 
-  public String getIndexDir() {
+  public Path getIndexDir() {
     synchronized (searcherLock) {
       if (_searcher == null) return getNewIndexDir();
       SolrIndexSearcher searcher = _searcher.get();
-      return searcher.getPath() == null ? dataDir + "index/" : searcher.getPath();
+      return searcher.getPath() == null ? getDataDir().resolve("index") : searcher.getPath();
     }
   }
 
@@ -403,13 +403,13 @@ public class SolrCore implements SolrInfoBean, Closeable {
    * @return the indexdir as given in index.properties
    * @throws SolrException if for any reason an index directory cannot be determined.
    */
-  public String getNewIndexDir() {
+  public Path getNewIndexDir() {
     Directory dir = null;
     try {
       dir =
           getDirectoryFactory()
               .get(getDataDir(), DirContext.META_DATA, getSolrConfig().indexConfig.lockType);
-      String result = getIndexPropertyFromPropFile(dir);
+      Path result = getIndexPropertyFromPropFile(dir);
       if (!result.equals(lastNewIndexDir)) {
         log.debug("New index directory detected: old={} new={}", lastNewIndexDir, result);
       }
@@ -440,7 +440,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   // See SOLR-11687
   //
 
-  private String getIndexPropertyFromPropFile(Directory dir) throws IOException {
+  private Path getIndexPropertyFromPropFile(Directory dir) throws IOException {
     IndexInput input;
     try {
       input = dir.openInput(IndexFetcher.INDEX_PROPERTIES, IOContext.DEFAULT);
@@ -448,7 +448,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
       // Swallow this error, dataDir/index is the right thing to return
       // if there is no index.properties file
       // All other exceptions are will propagate to caller.
-      return dataDir + "index/";
+      return getDataDir().resolve("index");
     }
     // c'tor just assigns a variable here, no exception thrown.
     final InputStream is = new PropertiesInputStream(input);
@@ -457,19 +457,19 @@ public class SolrCore implements SolrInfoBean, Closeable {
       p.load(new InputStreamReader(is, StandardCharsets.UTF_8));
 
       String s = p.getProperty("index");
-      if (s != null && s.trim().length() > 0) {
-        return dataDir + s.trim();
+      if (s != null && !s.trim().isEmpty()) {
+        return getDataDir().resolve(s.trim());
       }
 
       // We'll return dataDir/index/ if the properties file has an "index" property with
       // no associated value or does not have an index property at all.
-      return dataDir + "index/";
+      return getDataDir().resolve("index");
     } finally {
       IOUtils.closeQuietly(is);
     }
   }
 
-  private String
+  private Path
       lastNewIndexDir; // for debugging purposes only... access not synchronized, but that's ok
 
   public DirectoryFactory getDirectoryFactory() {
@@ -601,7 +601,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
 
   private SolrSnapshotMetaDataManager initSnapshotMetaDataManager() {
     try {
-      String dirName = getDataDir() + SolrSnapshotMetaDataManager.SNAPSHOT_METADATA_DIR + "/";
+      Path dirName = getDataDir().resolve(SolrSnapshotMetaDataManager.SNAPSHOT_METADATA_DIR);
       Directory snapshotDir =
           directoryFactory.get(dirName, DirContext.DEFAULT, getSolrConfig().indexConfig.lockType);
       return new SolrSnapshotMetaDataManager(this, snapshotDir);
@@ -627,7 +627,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
       Optional<SnapshotMetaData> metadata = snapshotMgr.release(commitName);
       if (metadata.isPresent()) {
         long gen = metadata.get().getGenerationNumber();
-        String indexDirPath = metadata.get().getIndexDirPath();
+        Path indexDirPath = metadata.get().getIndexDirPath();
 
         if (!indexDirPath.equals(getIndexDir())) {
           Directory d = getDirectoryFactory().get(indexDirPath, DirContext.DEFAULT, "none");
@@ -663,7 +663,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
    * @param indexDirPath The path of the directory
    * @throws IOException In case of I/O error.
    */
-  public void deleteNonSnapshotIndexFiles(String indexDirPath) throws IOException {
+  public void deleteNonSnapshotIndexFiles(Path indexDirPath) throws IOException {
     // Skip if the specified indexDirPath is the *current* index directory.
     if (getIndexDir().equals(indexDirPath)) {
       return;
@@ -837,7 +837,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   }
 
   // protect via synchronized(SolrCore.class)
-  private static Set<String> dirs = new HashSet<>();
+  private static final Set<Path> dirs = new HashSet<>();
 
   /**
    * Returns <code>true</code> iff the index in the named directory is currently locked.
@@ -858,7 +858,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   }
 
   void initIndex(boolean passOnPreviousState, boolean reload) throws IOException {
-    String indexDir = getNewIndexDir();
+    Path indexDir = getNewIndexDir();
     boolean indexExists = getDirectoryFactory().exists(indexDir);
     boolean firstTime;
     synchronized (SolrCore.class) {
@@ -1054,7 +1054,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
       CoreContainer coreContainer,
       CoreDescriptor coreDescriptor,
       ConfigSet configSet,
-      String dataDir,
+      Path dataDir,
       UpdateHandler updateHandler,
       IndexDeletionPolicyWrapper delPolicy,
       SolrCore prev,
@@ -1354,11 +1354,10 @@ public class SolrCore implements SolrInfoBean, Closeable {
     }
 
     // initialize disk total / free metrics
-    Path dataDirPath = Path.of(dataDir);
     parentContext.gauge(
         () -> {
           try {
-            return Files.getFileStore(dataDirPath).getTotalSpace();
+            return Files.getFileStore(dataDir).getTotalSpace();
           } catch (IOException e) {
             return 0L;
           }
@@ -1370,7 +1369,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
     parentContext.gauge(
         () -> {
           try {
-            return Files.getFileStore(dataDirPath).getUsableSpace();
+            return Files.getFileStore(dataDir).getUsableSpace();
           } catch (IOException e) {
             return 0L;
           }
@@ -1380,11 +1379,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
         Category.CORE.toString(),
         "fs");
     parentContext.gauge(
-        () -> dataDirPath.toAbsolutePath().toString(),
-        true,
-        "path",
-        Category.CORE.toString(),
-        "fs");
+        () -> dataDir.toAbsolutePath().toString(), true, "path", Category.CORE.toString(), "fs");
   }
 
   public String getMetricTag() {
@@ -1418,7 +1413,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
     }
   }
 
-  private String initDataDir(String dataDir, SolrConfig config, CoreDescriptor coreDescriptor) {
+  private Path initDataDir(Path dataDir, SolrConfig config, CoreDescriptor coreDescriptor) {
     return findDataDir(getDirectoryFactory(), dataDir, config, coreDescriptor);
   }
 
@@ -1434,9 +1429,9 @@ public class SolrCore implements SolrInfoBean, Closeable {
    * @return a normalized data directory name
    * @throws SolrException if the data directory cannot be loaded from the core descriptor
    */
-  static String findDataDir(
+  static Path findDataDir(
       DirectoryFactory directoryFactory,
-      String dataDir,
+      Path dataDir,
       SolrConfig config,
       CoreDescriptor coreDescriptor) {
     if (dataDir == null) {
@@ -1444,17 +1439,13 @@ public class SolrCore implements SolrInfoBean, Closeable {
         dataDir = config.getDataDir();
       }
       if (dataDir == null) {
-        try {
-          dataDir = coreDescriptor.getDataDir();
-          if (!directoryFactory.isAbsolute(dataDir)) {
-            dataDir = directoryFactory.getDataHome(coreDescriptor);
-          }
-        } catch (IOException e) {
-          throw new SolrException(ErrorCode.SERVER_ERROR, e);
+        dataDir = Path.of(coreDescriptor.getDataDir());
+        if (!directoryFactory.isAbsolute(dataDir)) {
+          dataDir = directoryFactory.getDataHome(coreDescriptor);
         }
       }
     }
-    return SolrPaths.normalizeDir(dataDir);
+    return dataDir;
   }
 
   public boolean modifyIndexProps(String tmpIdxDirName) {
@@ -1466,7 +1457,7 @@ public class SolrCore implements SolrInfoBean, Closeable {
   // package private
   static boolean modifyIndexProps(
       DirectoryFactory directoryFactory,
-      String dataDir,
+      Path dataDir,
       SolrConfig solrConfig,
       String tmpIdxDirName) {
     log.info("Updating index properties... index={}", tmpIdxDirName);
@@ -2068,8 +2059,8 @@ public class SolrCore implements SolrInfoBean, Closeable {
   private int onDeckSearchers; // number of searchers preparing
   // Lock ordering: one can acquire the openSearcherLock and then the searcherLock, but not
   // vice-versa.
-  private Object searcherLock = new Object(); // the sync object for the searcher
-  private ReentrantLock openSearcherLock =
+  private final Object searcherLock = new Object(); // the sync object for the searcher
+  private final ReentrantLock openSearcherLock =
       new ReentrantLock(true); // used to serialize opens/reopens for absolute ordering
   private final int maxWarmingSearchers; // max number of on-deck searchers allowed
   private final int slowQueryThresholdMillis; // threshold above which a query is considered slow
@@ -2298,9 +2289,9 @@ public class SolrCore implements SolrInfoBean, Closeable {
 
     openSearcherLock.lock();
     try {
-      String newIndexDir = getNewIndexDir();
-      String indexDirFile = null;
-      String newIndexDirFile = null;
+      Path newIndexDir = getNewIndexDir();
+      Path indexDirFile = null;
+      Path newIndexDirFile = null;
 
       // if it's not a normal near-realtime update, check that paths haven't changed.
       if (!updateHandlerReopens) {
@@ -3528,8 +3519,8 @@ public class SolrCore implements SolrInfoBean, Closeable {
 
   public void cleanupOldIndexDirectories(boolean reload) {
     final DirectoryFactory myDirFactory = getDirectoryFactory();
-    final String myDataDir = getDataDir();
-    final String myIndexDir = getNewIndexDir(); // ensure the latest replicated index is protected
+    final Path myDataDir = getDataDir();
+    final Path myIndexDir = getNewIndexDir(); // ensure the latest replicated index is protected
     final String coreName = getName();
     if (myDirFactory != null && myDataDir != null && myIndexDir != null) {
       Thread cleanupThread =

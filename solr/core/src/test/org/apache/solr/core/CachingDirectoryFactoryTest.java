@@ -52,7 +52,7 @@ public class CachingDirectoryFactoryTest extends SolrTestCaseJ4 {
   private volatile boolean stop = false;
 
   private static class Tracker {
-    String path;
+    Path path;
     AtomicInteger refCnt = new AtomicInteger(0);
     Directory dir;
   }
@@ -64,9 +64,9 @@ public class CachingDirectoryFactoryTest extends SolrTestCaseJ4 {
     try (MMapDirectoryFactory df = new MMapDirectoryFactory()) {
       df.init(new NamedList<>());
       Path pathA = tmpDir.resolve("a");
-      Directory a = df.get(pathA.toString(), DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
+      Directory a = df.get(pathA, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
       @SuppressWarnings({"unchecked", "rawtypes"})
-      Map.Entry<String, Directory>[] subdirs = new Map.Entry[26];
+      Map.Entry<Path, Directory>[] subdirs = new Map.Entry[26];
       BooleanSupplier removeAfter;
       boolean alwaysBefore = false;
       switch (r.nextInt(3)) {
@@ -85,27 +85,26 @@ public class CachingDirectoryFactoryTest extends SolrTestCaseJ4 {
       }
       int i = 0;
       for (char c = 'a'; c <= 'z'; c++) {
-        String subpath = pathA.resolve(Character.toString(c)).toString();
+        Path subpath = pathA.resolve(Character.toString(c));
         Directory d = df.get(subpath, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
         subdirs[i++] = new AbstractMap.SimpleImmutableEntry<>(subpath, d);
       }
-      Set<String> deleteAfter = CollectionUtil.newHashSet(subdirs.length + 1);
-      String pathAString = pathA.toString();
-      df.remove(pathAString, addIfTrue(deleteAfter, pathAString, removeAfter.getAsBoolean()));
+      Set<Path> deleteAfter = CollectionUtil.newHashSet(subdirs.length + 1);
+      df.remove(pathA, addIfTrue(deleteAfter, pathA, removeAfter.getAsBoolean()));
       df.doneWithDirectory(a);
       df.release(a);
       assertTrue(
           "The path " + pathA + " should exist because it has subdirs that prevent removal",
           pathA.toFile().exists()); // we know there are subdirs that should prevent removal
       Collections.shuffle(Arrays.asList(subdirs), r);
-      for (Map.Entry<String, Directory> e : subdirs) {
+      for (Map.Entry<Path, Directory> e : subdirs) {
         boolean after = removeAfter.getAsBoolean();
-        String pathString = e.getKey();
+        Path pathString = e.getKey();
         Directory d = e.getValue();
         df.remove(pathString, addIfTrue(deleteAfter, pathString, after));
         df.doneWithDirectory(d);
         df.release(d);
-        boolean exists = Files.exists(Path.of(pathString));
+        boolean exists = Files.exists(pathString);
         if (after) {
           assertTrue(
               "Path " + pathString + " should be removed after, but it no longer exists", exists);
@@ -127,10 +126,10 @@ public class CachingDirectoryFactoryTest extends SolrTestCaseJ4 {
         assertTrue(
             "There are subdirs to wait on, so the parent directory should still exist",
             pathA.toFile().exists()); // parent must still be present
-        for (Map.Entry<String, Directory> e : subdirs) {
-          Path path = Path.of(e.getKey());
+        for (Map.Entry<Path, Directory> e : subdirs) {
+          Path path = e.getKey();
           boolean exists = Files.exists(path);
-          if (deleteAfter.contains(path.toString())) {
+          if (deleteAfter.contains(path)) {
             assertTrue(exists);
           } else {
             assertFalse(exists);
@@ -141,7 +140,7 @@ public class CachingDirectoryFactoryTest extends SolrTestCaseJ4 {
     assertTrue("Dir " + tmpDir + " should be empty at the end", PathUtils.isEmpty(tmpDir));
   }
 
-  private static boolean addIfTrue(Set<String> deleteAfter, String path, boolean after) {
+  private static boolean addIfTrue(Set<Path> deleteAfter, Path path, boolean after) {
     if (after) {
       deleteAfter.add(path);
       return true;
@@ -294,11 +293,13 @@ public class CachingDirectoryFactoryTest extends SolrTestCaseJ4 {
             Tracker tracker = dirs.get(path);
             if (tracker == null) {
               tracker = new Tracker();
-              tracker.path = path;
-              tracker.dir = df.get(path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
+              tracker.path = Path.of(path);
+              tracker.dir =
+                  df.get(tracker.path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
               dirs.put(path, tracker);
             } else {
-              tracker.dir = df.get(path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
+              tracker.dir =
+                  df.get(tracker.path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
             }
             tracker.refCnt.incrementAndGet();
           }

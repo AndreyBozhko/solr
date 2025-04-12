@@ -341,7 +341,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
   }
 
   public void cleanupOldIndexDirectories(
-      final Path dataDirPath, final String currentIndexDirPath, boolean afterCoreReload)
+      final Path dataDirPath, final Path currentIndexDir, boolean afterCoreReload)
       throws IOException {
 
     if (!Files.isDirectory(dataDirPath)) {
@@ -351,7 +351,6 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin, Cl
       return;
     }
 
-    final Path currentIndexDir = Path.of(currentIndexDirPath);
     List<Path> dirsList;
     try (Stream<Path> oldIndexDirs = Files.list(dataDirPath)) {
       dirsList =

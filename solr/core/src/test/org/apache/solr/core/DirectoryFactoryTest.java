@@ -125,10 +125,10 @@ public class DirectoryFactoryTest extends SolrTestCase {
       CoreContainer cc,
       String... properties)
       throws IOException {
-    String dataHome =
+    Path dataHome =
         df.getDataHome(
             new CoreDescriptor("core_name", Path.of(instanceDir).toAbsolutePath(), cc, properties));
-    assertEquals(Path.of(expected).toAbsolutePath(), Path.of(dataHome).toAbsolutePath());
+    assertEquals(Path.of(expected).toAbsolutePath(), dataHome.toAbsolutePath());
   }
 
   private NodeConfig loadNodeConfig(String config) {

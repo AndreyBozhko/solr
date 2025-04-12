@@ -69,7 +69,7 @@ public class BlendedInfixLookupFactory extends AnalyzingInfixLookupFactory {
     FieldType ft = core.getLatestSchema().getFieldTypeByName(fieldTypeName.toString());
     if (ft == null) {
       throw new IllegalArgumentException(
-          "Error in configuration: " + fieldTypeName.toString() + " is not defined in the schema");
+          "Error in configuration: " + fieldTypeName + " is not defined in the schema");
     }
     Analyzer indexAnalyzer = ft.getIndexAnalyzer();
     Analyzer queryAnalyzer = ft.getQueryAnalyzer();
@@ -81,7 +81,7 @@ public class BlendedInfixLookupFactory extends AnalyzingInfixLookupFactory {
             ? Path.of(params.get(INDEX_PATH).toString())
             : Path.of(DEFAULT_INDEX_PATH);
 
-    indexPath = Path.of(core.getDataDir()).resolve(indexPath);
+    indexPath = core.getDataDir().resolve(indexPath);
 
     int minPrefixChars =
         params.get(MIN_PREFIX_CHARS) != null

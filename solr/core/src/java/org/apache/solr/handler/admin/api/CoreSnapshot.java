@@ -21,6 +21,7 @@ import static org.apache.solr.security.PermissionNameProvider.Name.CORE_READ_PER
 
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -72,7 +73,7 @@ public class CoreSnapshot extends CoreAdminAPIBase implements CoreSnapshotApi {
                   SolrException.ErrorCode.BAD_REQUEST, "Unable to locate core " + coreName);
             }
 
-            final String indexDirPath = core.getIndexDir();
+            final Path indexDirPath = core.getIndexDir();
             final IndexDeletionPolicyWrapper delPol = core.getDeletionPolicy();
             final IndexCommit ic = delPol.getAndSaveLatestCommit();
             try {
@@ -159,7 +160,7 @@ public class CoreSnapshot extends CoreAdminAPIBase implements CoreSnapshotApi {
                 SolrException.ErrorCode.BAD_REQUEST, "Unable to locate core " + coreName);
           }
 
-          try {
+          try (core) {
             try {
               core.deleteNamedSnapshot(snapshotName);
             } catch (IOException e) {
@@ -170,8 +171,6 @@ public class CoreSnapshot extends CoreAdminAPIBase implements CoreSnapshotApi {
             // OverseerCollectionMessageHandler can not provide the coreName as part of the result.
             response.coreName = coreName;
             response.commitName = snapshotName;
-          } finally {
-            core.close();
           }
 
           return response;

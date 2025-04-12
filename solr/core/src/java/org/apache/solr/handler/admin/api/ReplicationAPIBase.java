@@ -540,7 +540,7 @@ public abstract class ReplicationAPIBase extends JerseyResource {
     @Override
     protected Path initFile() {
       // if it is a tlog file read from tlog directory
-      return Path.of(solrCore.getUpdateHandler().getUpdateLog().getTlogDir(), tlogFileName);
+      return solrCore.getUpdateHandler().getUpdateLog().getTlogDir().resolve(tlogFileName);
     }
   }
 

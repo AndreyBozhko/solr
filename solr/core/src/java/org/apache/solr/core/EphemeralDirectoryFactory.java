@@ -58,7 +58,7 @@ public abstract class EphemeralDirectoryFactory extends CachingDirectoryFactory 
 
   @Override
   public void cleanupOldIndexDirectories(
-      final Path dataDirPath, final String currentIndexDirPath, boolean reload) {
+      final Path dataDirPath, final Path currentIndexDirPath, boolean reload) {
     // currently a no-op
   }
 }

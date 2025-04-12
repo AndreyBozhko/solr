@@ -187,7 +187,7 @@ public class TestCloudRecovery extends SolrCloudTestCase {
     Map<String, byte[]> contentFiles = new HashMap<>();
     for (JettySolrRunner solrRunner : cluster.getJettySolrRunners()) {
       for (SolrCore solrCore : solrRunner.getCoreContainer().getCores()) {
-        Path tlogFolder = Path.of(solrCore.getUpdateHandler().getUpdateLog().getTlogDir());
+        Path tlogFolder = solrCore.getUpdateHandler().getUpdateLog().getTlogDir();
         try (Stream<Path> tLogFiles = Files.list(tlogFolder)) {
           Path lastTLogFile =
               tlogFolder.resolve(tLogFiles.sorted().toList().getLast().getFileName());

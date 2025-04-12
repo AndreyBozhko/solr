@@ -20,6 +20,7 @@ import static org.apache.solr.client.api.model.Constants.SNAPSHOT_NAME;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.nio.file.Path;
 import java.util.Collection;
 
 public class CreateCoreSnapshotResponse extends SolrJerseyResponse {
@@ -33,7 +34,7 @@ public class CreateCoreSnapshotResponse extends SolrJerseyResponse {
 
   @Schema(description = "The path to the directory containing the index files.")
   @JsonProperty
-  public String indexDirPath;
+  public Path indexDirPath;
 
   @Schema(description = "The generation value for the created snapshot.")
   @JsonProperty

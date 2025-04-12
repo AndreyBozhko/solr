@@ -102,11 +102,9 @@ public class MergeIndexes extends CoreAdminAPIBase implements MergeIndexesApi {
             Map<Directory, Boolean> dirsToBeReleased = new HashMap<>();
 
             try {
-              var dirNames =
-                  Optional.ofNullable(requestBody.indexDirs).orElseGet(() -> new ArrayList<>());
+              var dirNames = Optional.ofNullable(requestBody.indexDirs).orElseGet(ArrayList::new);
               if (dirNames.isEmpty()) {
-                var sources =
-                    Optional.ofNullable(requestBody.srcCores).orElseGet(() -> new ArrayList<>());
+                var sources = Optional.ofNullable(requestBody.srcCores).orElseGet(ArrayList::new);
                 if (sources.isEmpty())
                   throw new SolrException(
                       SolrException.ErrorCode.BAD_REQUEST,
@@ -135,14 +133,14 @@ public class MergeIndexes extends CoreAdminAPIBase implements MergeIndexesApi {
                           if (dirFactory instanceof CachingDirectoryFactory) {
                             if (!((CachingDirectoryFactory) dirFactory)
                                 .getLivePaths()
-                                .contains(dir)) {
+                                .contains(Path.of(dir))) {
                               markAsDone = true;
                             }
                           }
                           try {
                             Directory dirTemp =
                                 dirFactory.get(
-                                    dir,
+                                    Path.of(dir),
                                     DirectoryFactory.DirContext.DEFAULT,
                                     core.getSolrConfig().indexConfig.lockType);
                             dirsToBeReleased.put(dirTemp, markAsDone);

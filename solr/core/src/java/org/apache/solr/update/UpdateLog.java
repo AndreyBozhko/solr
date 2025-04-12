@@ -418,11 +418,11 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
       dataDir = ulogDir;
     }
 
-    if (dataDir == null || dataDir.length() == 0) {
+    if (dataDir == null || dataDir.isEmpty()) {
       // NOTE: this method is called from within `UpdateHandler` ctor, and this method is called
       // _after_ `init(PluginInfo)`; so if ulogDir is specified in `<updateLog>` element of
       // `solrconfig.xml`, `dataDir` will _not_ be null here.
-      dataDir = core.getDataDir();
+      dataDir = core.getDataDir().toString();
     }
 
     return resolveDataDir(core, dataDir);
@@ -555,7 +555,8 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
     assert (instancePath = Path.of(instancePath.toUri())).getClass()
         == (dataDirPath = Path.of(dataDirPath.toUri())).getClass();
 
-    tlogDir = ulogToTlogDir(core.getName(), dataDirPath, instancePath, core.getDataDir());
+    tlogDir =
+        ulogToTlogDir(core.getName(), dataDirPath, instancePath, core.getDataDir().toString());
 
     maybeClearLog(core);
 
@@ -567,7 +568,7 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
     try {
       d =
           df.get(
-              tlogDir.toAbsolutePath().toString(),
+              tlogDir.toAbsolutePath(),
               DirectoryFactory.DirContext.DEFAULT,
               DirectoryFactory.LOCK_TYPE_NONE);
       this.releaseTlogDir = () -> df.release(d);
@@ -673,8 +674,8 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
     return new TransactionLog(tlogFile, globalStrings, openExisting);
   }
 
-  public String getTlogDir() {
-    return tlogDir.toAbsolutePath().toString();
+  public Path getTlogDir() {
+    return tlogDir.toAbsolutePath();
   }
 
   public String getUlogDir() {

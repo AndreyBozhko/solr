@@ -112,7 +112,7 @@ public class MissingSegmentRecoveryTest extends SolrCloudTestCase {
   private List<Path> getSegmentFiles(Replica replica) throws IOException {
     try (SolrCore core =
         cluster.getReplicaJetty(replica).getCoreContainer().getCore(replica.getCoreName())) {
-      Path indexDir = Path.of(core.getDataDir(), "index");
+      Path indexDir = core.getDataDir().resolve("index");
       try (Stream<Path> files = Files.list(indexDir)) {
         return files
             .filter((file) -> file.getFileName().toString().startsWith("segments_"))

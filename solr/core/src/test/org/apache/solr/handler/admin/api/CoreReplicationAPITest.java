@@ -106,7 +106,7 @@ public class CoreReplicationAPITest extends SolrTestCaseJ4 {
     UpdateHandler mockUpdateHandler = mock(UpdateHandler.class);
     UpdateLog mockUpdateLog = mock(UpdateLog.class);
     when(mockUpdateHandler.getUpdateLog()).thenReturn(mockUpdateLog);
-    when(mockUpdateLog.getTlogDir()).thenReturn("ignore");
+    when(mockUpdateLog.getTlogDir()).thenReturn(Path.of("ignore"));
 
     // Mocks for LocalFsConfFileStream
     SolrResourceLoader mockSolrResourceLoader = mock(SolrResourceLoader.class);

@@ -17,6 +17,7 @@
 
 package org.apache.solr.core;
 
+import java.nio.file.Path;
 import java.util.Map;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.CoreAdminParams;
@@ -41,7 +42,7 @@ public class SyntheticSolrCore extends SolrCore {
       CoreContainer coreContainer,
       CoreDescriptor coreDescriptor,
       ConfigSet configSet,
-      String dataDir,
+      Path dataDir,
       UpdateHandler updateHandler,
       IndexDeletionPolicyWrapper delPolicy,
       SolrCore prev,

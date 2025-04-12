@@ -108,23 +108,23 @@ public class RecoveryStrategy implements Runnable, Closeable {
   private int startingRecoveryDelayMilliSeconds = 2000;
   private ReplicationHandler replicationHandlerDoingFetch;
 
-  public static interface RecoveryListener {
-    public void recovered();
+  public interface RecoveryListener {
+    void recovered();
 
-    public void failed();
+    void failed();
   }
 
   private volatile boolean close = false;
 
-  private RecoveryListener recoveryListener;
-  private ZkController zkController;
-  private String baseUrl;
-  private String coreZkNodeName;
-  private ZkStateReader zkStateReader;
-  private volatile String coreName;
+  private final RecoveryListener recoveryListener;
+  private final ZkController zkController;
+  private final String baseUrl;
+  private final String coreZkNodeName;
+  private final ZkStateReader zkStateReader;
+  private final String coreName;
   private int retries;
   private boolean recoveringAfterStartup;
-  private CoreContainer cc;
+  private final CoreContainer cc;
   private volatile FutureTask<NamedList<Object>> prevSendPreRecoveryHttpUriRequest;
   private final Replica.Type replicaType;
 

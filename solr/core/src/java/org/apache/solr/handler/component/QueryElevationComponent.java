@@ -391,7 +391,7 @@ public class QueryElevationComponent extends SearchComponent implements SolrCore
       xmlDocument = SafeXMLParsing.parseConfigXML(log, core.getResourceLoader(), configFileName);
     } catch (SolrResourceNotFoundException e) {
       String msg = "Missing config file \"" + configFileName + "\"";
-      if (Files.exists(Path.of(core.getDataDir(), configFileName))) {
+      if (Files.exists(core.getDataDir().resolve(configFileName))) {
         msg += ". Found it in the data dir but this is no longer supported since 9.0.";
       }
       throw new InitializationException(msg, InitializationExceptionCause.MISSING_CONFIG_FILE);

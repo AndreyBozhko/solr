@@ -332,13 +332,13 @@ public class TestSolrCoreSnapshots extends SolrCloudTestCase {
       final String indexDirPath =
           (String) ((Map<String, Object>) entry.getValue()).get("indexDirPath");
       final long genNumber = (Long) ((Map<String, Object>) entry.getValue()).get("generation");
-      result.add(new SnapshotMetaData(commitName, indexDirPath, genNumber));
+      result.add(new SnapshotMetaData(commitName, Path.of(indexDirPath), genNumber));
     }
     return result;
   }
 
-  private List<IndexCommit> listCommits(String directory) throws Exception {
-    Directory dir = new NIOFSDirectory(Path.of(directory));
+  private List<IndexCommit> listCommits(Path directory) throws Exception {
+    Directory dir = new NIOFSDirectory(directory);
     try {
       return DirectoryReader.listCommits(dir);
     } catch (IndexNotFoundException ex) {

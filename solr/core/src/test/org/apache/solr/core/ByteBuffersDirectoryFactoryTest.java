@@ -36,7 +36,7 @@ public class ByteBuffersDirectoryFactoryTest extends SolrTestCaseJ4 {
             return directory;
           }
         };
-    String path = "/fake/path";
+    Path path = Path.of("/fake/path");
     Directory dir1 = factory.get(path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
     Directory dir2 = factory.get(path, DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
     assertEquals(
@@ -53,7 +53,7 @@ public class ByteBuffersDirectoryFactoryTest extends SolrTestCaseJ4 {
   public void testOpenSucceedForEmptyDir() throws IOException {
     ByteBuffersDirectoryFactory factory = new ByteBuffersDirectoryFactory();
     Directory dir =
-        factory.get("/fake/path", DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
+        factory.get(Path.of("/fake/path"), DirContext.DEFAULT, DirectoryFactory.LOCK_TYPE_SINGLE);
     assertNotNull(
         "ByteBuffersDirectoryFactory should create ByteBuffersDirectory even if the path doesn't lead "
             + "to index directory on the file system",

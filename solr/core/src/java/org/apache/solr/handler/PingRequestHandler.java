@@ -130,7 +130,7 @@ public class PingRequestHandler extends RequestHandlerBase implements SolrCoreAw
     ENABLE,
     DISABLE,
     PING
-  };
+  }
 
   private String healthFileName = null;
   private Path healthcheck = null;
@@ -147,7 +147,7 @@ public class PingRequestHandler extends RequestHandlerBase implements SolrCoreAw
     if (null != healthFileName) {
       healthcheck = Path.of(healthFileName);
       if (!healthcheck.isAbsolute()) {
-        healthcheck = Path.of(core.getDataDir(), healthFileName);
+        healthcheck = core.getDataDir().resolve(healthFileName);
         healthcheck = healthcheck.toAbsolutePath();
       }
 

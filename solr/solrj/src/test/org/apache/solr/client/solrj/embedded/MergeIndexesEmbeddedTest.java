@@ -57,7 +57,7 @@ public class MergeIndexesEmbeddedTest extends MergeIndexesExampleTestBase {
   @Override
   protected String getIndexDirCore1() {
     try (SolrCore core1 = cores.getCore("core1")) {
-      return core1.getIndexDir();
+      return core1.getIndexDir().toString();
     }
   }
 }

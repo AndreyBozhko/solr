@@ -482,13 +482,13 @@ public class SpellCheckComponentTest extends SolrTestCaseJ4 {
   @Test
   public void testRelativeIndexDirLocation() {
     SolrCore core = h.getCore();
-    Path indexDir = Path.of(core.getDataDir(), "spellchecker1");
+    Path indexDir = core.getDataDir().resolve("spellchecker1");
     assertTrue(Files.exists(indexDir));
 
-    indexDir = Path.of(core.getDataDir(), "spellchecker2");
+    indexDir = core.getDataDir().resolve("spellchecker2");
     assertTrue(Files.exists(indexDir));
 
-    indexDir = Path.of(core.getDataDir(), "spellchecker3");
+    indexDir = core.getDataDir().resolve("spellchecker3");
     assertTrue(Files.exists(indexDir));
   }
 

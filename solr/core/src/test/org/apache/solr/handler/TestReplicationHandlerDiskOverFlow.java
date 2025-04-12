@@ -24,6 +24,7 @@ import static org.apache.solr.handler.TestReplicationHandler.createAndStartJetty
 
 import java.io.StringWriter;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +55,7 @@ public class TestReplicationHandlerDiskOverFlow extends SolrTestCaseJ4 {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final String expectedErr = "Search is temporarily disabled";
-  Function<String, Long> originalDiskSpaceprovider = null;
+  Function<Path, Long> originalDiskSpaceprovider = null;
   BooleanSupplier originalTestWait = null;
 
   JettySolrRunner leaderJetty, followerJetty;
@@ -131,13 +132,7 @@ public class TestReplicationHandlerDiskOverFlow extends SolrTestCaseJ4 {
     log.info("Indexing to FOLLOWER");
     long szFollower = indexDocs(followerClient, 1200, 1000);
 
-    IndexFetcher.usableDiskSpaceProvider =
-        new Function<String, Long>() {
-          @Override
-          public Long apply(String s) {
-            return szLeader;
-          }
-        };
+    IndexFetcher.usableDiskSpaceProvider = s -> szLeader;
 
     // we don't need/want the barrier to be cyclic, so we use a ref that our barrier action will
     // null out to prevent it from being triggered multiple times (which shouldn't happen anyway)

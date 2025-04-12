@@ -77,7 +77,7 @@ public class CleanupOldIndexTest extends SolrCloudTestCase {
     Path dataDir = null;
     try (SolrCore solrCore =
         coreContainer.getCore(coreContainer.getCoreDescriptors().get(0).getName())) {
-      dataDir = Path.of(solrCore.getDataDir());
+      dataDir = solrCore.getDataDir();
     }
     assertTrue(Files.isDirectory(dataDir));
 

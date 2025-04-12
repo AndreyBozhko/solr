@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
 import java.net.URI;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -49,7 +50,7 @@ public class RestoreCore implements Callable<Boolean> {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final SolrCore core;
-  private RestoreRepository repository;
+  private final RestoreRepository repository;
 
   private RestoreCore(SolrCore core, RestoreRepository repository) {
     this.core = core;
@@ -85,9 +86,9 @@ public class RestoreCore implements Callable<Boolean> {
   public boolean doRestore() throws Exception {
     SimpleDateFormat dateFormat = new SimpleDateFormat(SnapShooter.DATE_FMT, Locale.ROOT);
     String restoreIndexName = "restore." + dateFormat.format(new Date());
-    String restoreIndexPath = core.getDataDir() + restoreIndexName;
+    Path restoreIndexPath = core.getDataDir().resolve(restoreIndexName);
 
-    String indexDirPath = core.getIndexDir();
+    Path indexDirPath = core.getIndexDir();
     Directory restoreIndexDir = null;
     Directory indexDir = null;
     try {

@@ -179,9 +179,9 @@ public class IndexFetcher {
 
   private final Http2SolrClient solrClient;
 
-  private Integer connTimeout;
+  private final Integer connTimeout;
 
-  private Integer soTimeout;
+  private final Integer soTimeout;
 
   private boolean skipCommitOnLeaderVersionZero = true;
 
@@ -410,9 +410,9 @@ public class IndexFetcher {
     boolean successfulInstall = false;
     markReplicationStart();
     Directory tmpIndexDir = null;
-    String tmpIndexDirPath;
+    Path tmpIndexDirPath;
     Directory indexDir = null;
-    String indexDirPath;
+    Path indexDirPath;
     boolean deleteTmpIdxDir = true;
     Path tmpTlogDir = null;
 
@@ -570,7 +570,7 @@ public class IndexFetcher {
       fsyncService =
           ExecutorUtil.newMDCAwareSingleThreadExecutor(new SolrNamedThreadFactory("fsyncService"));
       // use a synchronized list because the list is read by other threads (to show details)
-      filesDownloaded = Collections.synchronizedList(new ArrayList<Map<String, Object>>());
+      filesDownloaded = Collections.synchronizedList(new ArrayList<>());
       // if the generation of leader is older than that of the follower, it means they are not
       // compatible to be copied then a new index directory to be created and all the files need to
       // be copied
@@ -581,7 +581,7 @@ public class IndexFetcher {
 
       String timestamp = new SimpleDateFormat(SnapShooter.DATE_FMT, Locale.ROOT).format(new Date());
       String tmpIdxDirName = "index." + timestamp;
-      tmpIndexDirPath = solrCore.getDataDir() + tmpIdxDirName;
+      tmpIndexDirPath = solrCore.getDataDir().resolve(tmpIdxDirName);
 
       tmpIndexDir =
           solrCore
@@ -1108,8 +1108,8 @@ public class IndexFetcher {
       boolean downloadCompleteIndex,
       Directory indexDir,
       Directory tmpIndexDir,
-      String indexDirPath,
-      String tmpIndexDirPath,
+      Path indexDirPath,
+      Path tmpIndexDirPath,
       long latestGeneration)
       throws Exception {
     if (log.isDebugEnabled()) {
@@ -1157,7 +1157,7 @@ public class IndexFetcher {
             alwaysDownload);
       }
       if (!compareResult.equal || downloadCompleteIndex || alwaysDownload) {
-        Path localFile = Path.of(indexDirPath, filename);
+        Path localFile = indexDirPath.resolve(filename);
         if (downloadCompleteIndex
             && doDifferentialCopy
             && compareResult.equal
@@ -1171,7 +1171,7 @@ public class IndexFetcher {
           }
           // A hard link here should survive the eventual directory move, and should be more space
           // efficient as compared to a file copy. TODO: Maybe we could do a move safely here?
-          Files.createLink(Path.of(tmpIndexDirPath, filename), localFile);
+          Files.createLink(tmpIndexDirPath.resolve(filename), localFile);
           bytesSkippedCopying += Files.size(localFile);
         } else {
           dirFileFetcher =
@@ -1198,13 +1198,12 @@ public class IndexFetcher {
   // only for testing purposes. do not use this anywhere else
   // -----------START----------------------
   static BooleanSupplier testWait = () -> true;
-  static Function<String, Long> usableDiskSpaceProvider = dir -> getUsableSpace(dir);
+  static Function<Path, Long> usableDiskSpaceProvider = IndexFetcher::getUsableSpace;
 
   // ------------ END---------------------
 
-  private static Long getUsableSpace(String dir) {
+  private static Long getUsableSpace(Path file) {
     try {
-      Path file = Path.of(dir);
       if (Files.notExists(file)) {
         file = file.getParent();
         // this is not a disk directory. so just pretend that there is enough space
@@ -1227,7 +1226,7 @@ public class IndexFetcher {
   }
 
   private void deleteFilesInAdvance(
-      Directory indexDir, String indexDirPath, long usableDiskSpace, long totalSpaceRequired)
+      Directory indexDir, Path indexDirPath, long usableDiskSpace, long totalSpaceRequired)
       throws IOException {
     long actualSpaceReqd = totalSpaceRequired;
     List<String> filesTobeDeleted = new ArrayList<>();
@@ -1635,13 +1634,13 @@ public class IndexFetcher {
   }
 
   private interface FileInterface {
-    public void sync() throws IOException;
+    void sync() throws IOException;
 
-    public void write(byte[] buf, int packetSize) throws IOException;
+    void write(byte[] buf, int packetSize) throws IOException;
 
-    public void close() throws Exception;
+    void close() throws Exception;
 
-    public void delete() throws Exception;
+    void delete() throws Exception;
   }
 
   /**
@@ -1941,8 +1940,8 @@ public class IndexFetcher {
 
   private static class DirectoryFile implements FileInterface {
     private final String saveAs;
-    private Directory copy2Dir;
-    private IndexOutput outStream;
+    private final Directory copy2Dir;
+    private final IndexOutput outStream;
 
     DirectoryFile(Directory tmpIndexDir, String saveAs) throws IOException {
       this.saveAs = saveAs;
@@ -1987,7 +1986,7 @@ public class IndexFetcher {
   private static class LocalFsFile implements FileInterface {
 
     FileChannel fileChannel;
-    private FileOutputStream fileOutputStream;
+    private final FileOutputStream fileOutputStream;
     Path file;
 
     LocalFsFile(Path dir, String saveAs) throws IOException {

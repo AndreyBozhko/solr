@@ -17,6 +17,7 @@
 package org.apache.solr.core.snapshots;
 
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -359,7 +360,7 @@ public class TestSolrCloudSnapshots extends SolrCloudTestCase {
           (String) ((Map<String, Object>) entry.getValue()).get(SolrSnapshotManager.INDEX_DIR_PATH);
       final long genNumber =
           (Long) ((Map<String, Object>) entry.getValue()).get(SolrSnapshotManager.GENERATION_NUM);
-      result.add(new SnapshotMetaData(commitName, indexDirPath, genNumber));
+      result.add(new SnapshotMetaData(commitName, Path.of(indexDirPath), genNumber));
     }
     return result;
   }

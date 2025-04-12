@@ -81,8 +81,7 @@ public class TestConfigSets extends SolrTestCaseJ4 {
       SolrCore core1 = container.create("core1", Map.of("configSet", "configset-2"));
       assertThat(core1.getCoreDescriptor().getName(), is("core1"));
       assertThat(
-          Path.of(core1.getDataDir()).toString(),
-          is(solrHome.resolve("core1").resolve("data").toString()));
+          core1.getDataDir().toString(), is(solrHome.resolve("core1").resolve("data").toString()));
     } finally {
       if (container != null) container.shutdown();
     }

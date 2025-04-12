@@ -500,7 +500,7 @@ public abstract class AbstractIncrementalBackupTest extends SolrCloudTestCase {
       Set<String> fileNames =
           new HashSet<>(solrCore.getDeletionPolicy().getLatestCommit().getFileNames());
       final List<Path> indexFiles;
-      try (Stream<Path> indexFolderFiles = Files.list(Path.of(solrCore.getIndexDir()))) {
+      try (Stream<Path> indexFolderFiles = Files.list(solrCore.getIndexDir())) {
         indexFiles =
             indexFolderFiles
                 .filter(x -> fileNames.contains(x.getFileName().toString()))

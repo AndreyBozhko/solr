@@ -228,7 +228,7 @@ public abstract class AbstractUnloadDistributedZkTestBase extends AbstractFullDi
         zkStateReader.getClusterState().getCollection("unloadcollection").getSlices().size();
     assertEquals(1, slices);
     SolrCore solrCore = getFirstCore("unloadcollection", jetty1);
-    String core1DataDir = solrCore.getDataDir();
+    Path core1DataDir = solrCore.getDataDir();
 
     assertTrue(
         CollectionAdminRequest.addReplicaToShard("unloadcollection", "shard1")
@@ -364,7 +364,7 @@ public abstract class AbstractUnloadDistributedZkTestBase extends AbstractFullDi
     assertTrue(
         CollectionAdminRequest.addReplicaToShard("unloadcollection", "shard1")
             .setCoreName(leaderProps.getCoreName())
-            .setDataDir(core1DataDir)
+            .setDataDir(core1DataDir.toString())
             .setNode(leaderProps.getNodeName())
             .process(cloudClient)
             .isSuccess());
